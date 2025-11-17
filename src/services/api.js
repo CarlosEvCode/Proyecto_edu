@@ -573,6 +573,44 @@ export async function getNivelesEducativos() {
 }
 
 /**
+ * Escalas Magisteriales - GET todos
+ */
+export async function getEscalasMagisteriales() {
+	try {
+		const {data, error} = await supabase
+			.from('tbl_escalasmagisteriales')
+			.select('id, nombre')
+			.order('nombre', {ascending: true});
+
+		if (error) throw error;
+
+		return data;
+	} catch (error) {
+		console.error('Error al obtener escalas magisteriales:', error);
+		throw new Error(error.message || 'Error al obtener escalas magisteriales');
+	}
+}
+
+/**
+ * Condiciones - GET todos
+ */
+export async function getCondiciones() {
+	try {
+		const {data, error} = await supabase
+			.from('tbl_condiciones')
+			.select('id, nombre')
+			.order('nombre', {ascending: true});
+
+		if (error) throw error;
+
+		return data;
+	} catch (error) {
+		console.error('Error al obtener condiciones:', error);
+		throw new Error(error.message || 'Error al obtener condiciones');
+	}
+}
+
+/**
  * Plazas - GET todas
  */
 export async function getPlazas() {

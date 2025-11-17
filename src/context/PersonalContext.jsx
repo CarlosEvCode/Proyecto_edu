@@ -7,6 +7,8 @@ export function PersonalProvider({children}) {
 	const [cargos, setCargos] = useState([]);
 	const [especialidades, setEspecialidades] = useState([]);
 	const [nivelEducativo, setNivelEducativo] = useState([]);
+	const [escalasMagisteriales, setEscalasMagisteriales] = useState([]);
+	const [condiciones, setCondiciones] = useState([]);
 
 	const [pagination, setPagination] = useState({
 		page: 1,
@@ -60,6 +62,10 @@ export function PersonalProvider({children}) {
 		setEspecialidades,
 		nivelEducativo,
 		setNivelEducativo,
+		escalasMagisteriales,
+		setEscalasMagisteriales,
+		condiciones,
+		setCondiciones,
 		pagination,
 		updatePagination,
 		filters,

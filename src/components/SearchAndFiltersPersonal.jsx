@@ -1,7 +1,12 @@
 import React, {useState, useRef} from 'react';
 import {usePersonalContext} from '../context/PersonalContext';
 
-export function SearchAndFiltersPersonal({onSearch, cargos, especialidades}) {
+export function SearchAndFiltersPersonal({
+	onSearch,
+	cargos,
+	especialidades,
+	niveles,
+}) {
 	const {filters, updateFilters, resetFilters} = usePersonalContext();
 	const [showFilters, setShowFilters] = useState(false);
 
@@ -30,7 +35,6 @@ export function SearchAndFiltersPersonal({onSearch, cargos, especialidades}) {
 			cargo: '',
 			especialidad: '',
 			nivel: '',
-			searchType: 'general',
 		});
 	};
 
@@ -89,17 +93,19 @@ export function SearchAndFiltersPersonal({onSearch, cargos, especialidades}) {
 						</select>
 					</div>
 
-					{/* Search type filter */}
+					{/* Nivel filter */}
 					<div className="filter-group">
-						<label>Tipo de búsqueda</label>
+						<label>Nivel Educativo</label>
 						<select
-							value={filters.searchType}
-							onChange={(e) => handleFilterChange('searchType', e.target.value)}
+							value={filters.nivel}
+							onChange={(e) => handleFilterChange('nivel', e.target.value)}
 						>
-							<option value="general">General</option>
-							<option value="personal">Solo personal</option>
-							<option value="dni">Por DNI</option>
-							<option value="codigo">Por Código Modular</option>
+							<option value="">Todos los niveles</option>
+							{niveles.map((n) => (
+								<option key={n.id} value={n.id}>
+									{n.nombre}
+								</option>
+							))}
 						</select>
 					</div>
 

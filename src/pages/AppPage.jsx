@@ -22,6 +22,12 @@ export function AppPage() {
 		setCargos,
 		especialidades,
 		setEspecialidades,
+		nivelEducativo,
+		setNivelEducativo,
+		escalasMagisteriales,
+		setEscalasMagisteriales,
+		condiciones,
+		setCondiciones,
 		pagination,
 		updatePagination,
 		filters,
@@ -106,15 +112,27 @@ export function AppPage() {
 		);
 
 		try {
-			const [cargosData, especialidadesData] = await Promise.all([
+			const [
+				cargosData,
+				especialidadesData,
+				nivelesData,
+				escalasData,
+				condicionesData,
+			] = await Promise.all([
 				api.getCargos(),
 				api.getEspecialidades(),
+				api.getNivelesEducativos(),
+				api.getEscalasMagisteriales(),
+				api.getCondiciones(),
 			]);
 
 			if (!requestController.isActive(token)) return;
 
 			setCargos(Array.isArray(cargosData) ? cargosData : []);
 			setEspecialidades(Array.isArray(especialidadesData) ? especialidadesData : []);
+			setNivelEducativo(Array.isArray(nivelesData) ? nivelesData : []);
+			setEscalasMagisteriales(Array.isArray(escalasData) ? escalasData : []);
+			setCondiciones(Array.isArray(condicionesData) ? condicionesData : []);
 		} catch (error) {
 			if (requestController.isActive(token)) {
 				showNotification('Error al cargar opciones de filtro', 'error');
@@ -196,6 +214,15 @@ export function AppPage() {
 				if (updatedPersonal.plaza.fecha_ingreso_institucion !== undefined) {
 					plazaData.fecha_ingreso_institucion =
 						updatedPersonal.plaza.fecha_ingreso_institucion || null;
+				}
+				if (updatedPersonal.plaza.cargo?.id !== undefined) {
+					plazaData.cargo_id = updatedPersonal.plaza.cargo.id || null;
+				}
+				if (updatedPersonal.plaza.especialidad?.id !== undefined) {
+					plazaData.especialidad_id = updatedPersonal.plaza.especialidad.id || null;
+				}
+				if (updatedPersonal.plaza.nivel_educativo?.id !== undefined) {
+					plazaData.nivel_educativo_id = updatedPersonal.plaza.nivel_educativo.id || null;
 				}
 
 				// Solo actualizar si hay campos para actualizar
@@ -366,7 +393,6 @@ export function AppPage() {
 					</div>
 				</div>
 			</header>
-
 			{/* Mobile Drawer */}
 			<div
 				className={`mobile-drawer-overlay ${showMobileDrawer ? 'active' : ''}`}
@@ -428,7 +454,6 @@ export function AppPage() {
 					</div>
 				</div>
 			</div>
-
 			{/* Main Content */}
 			<main className="main-content">
 				{/* Search and Filters */}
@@ -437,9 +462,9 @@ export function AppPage() {
 						onSearch={handleSearch}
 						cargos={cargos}
 						especialidades={especialidades}
+						niveles={nivelEducativo}
 					/>
-				</div>
-
+				</div>{' '}
 				{/* Results Container */}
 				<div className="results-container">
 					{/* Results Header */}
@@ -486,7 +511,6 @@ export function AppPage() {
 						</div>
 					)}
 				</div>
-
 				{/* Botón flotante para agregar personal */}
 				<button
 					onClick={() => setIsAddModalOpen(true)}
@@ -496,7 +520,6 @@ export function AppPage() {
 					<span className="material-icons">person_add</span>
 				</button>
 			</main>
-
 			{/* Modals */}
 			<PersonalDetailModal
 				personal={selectedPersonal}
@@ -506,8 +529,10 @@ export function AppPage() {
 				onDelete={handleDeletePersonal}
 				cargos={cargos}
 				especialidades={especialidades}
+				niveles={nivelEducativo}
+				escalas={escalasMagisteriales}
+				condiciones={condiciones}
 			/>
-
 			<AddPersonalModal
 				isOpen={isAddModalOpen}
 				onClose={() => setIsAddModalOpen(false)}
@@ -516,7 +541,6 @@ export function AppPage() {
 				especialidades={especialidades}
 				isLoading={isSavingPersonal}
 			/>
-
 			{/* Notification */}
 			{notification && (
 				<Notification
@@ -525,7 +549,6 @@ export function AppPage() {
 					onClose={() => setNotification(null)}
 				/>
 			)}
-
 			{/* Logout Confirmation Modal */}
 			{showLogoutConfirm && (
 				<div className="modal-overlay show">
