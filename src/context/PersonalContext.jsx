@@ -9,6 +9,7 @@ export function PersonalProvider({children}) {
 	const [nivelEducativo, setNivelEducativo] = useState([]);
 	const [escalasMagisteriales, setEscalasMagisteriales] = useState([]);
 	const [condiciones, setCondiciones] = useState([]);
+	const [sistemasPensiones, setSistemasPensiones] = useState([]);
 
 	const [pagination, setPagination] = useState({
 		page: 1,
@@ -66,6 +67,8 @@ export function PersonalProvider({children}) {
 		setEscalasMagisteriales,
 		condiciones,
 		setCondiciones,
+		sistemasPensiones,
+		setSistemasPensiones,
 		pagination,
 		updatePagination,
 		filters,

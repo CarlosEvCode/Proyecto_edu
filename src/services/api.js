@@ -611,6 +611,25 @@ export async function getCondiciones() {
 }
 
 /**
+ * Sistemas de Pensiones - GET todos
+ */
+export async function getSistemasPensiones() {
+	try {
+		const {data, error} = await supabase
+			.from('tbl_sistemaspensiones')
+			.select('id, nombre')
+			.order('nombre', {ascending: true});
+
+		if (error) throw error;
+
+		return data;
+	} catch (error) {
+		console.error('Error al obtener sistemas de pensiones:', error);
+		throw new Error(error.message || 'Error al obtener sistemas de pensiones');
+	}
+}
+
+/**
  * Plazas - GET todas
  */
 export async function getPlazas() {
@@ -634,6 +653,25 @@ export async function getPlazas() {
 	} catch (error) {
 		console.error('Error al obtener plazas:', error);
 		throw new Error(error.message || 'Error al obtener plazas');
+	}
+}
+
+/**
+ * Plazas - POST crear nueva
+ */
+export async function createPlaza(plazaData) {
+	try {
+		const {data, error} = await supabase
+			.from('tbl_plazas')
+			.insert([plazaData])
+			.select();
+
+		if (error) throw error;
+
+		return data[0];
+	} catch (error) {
+		console.error('Error al crear plaza:', error);
+		throw new Error(error.message || 'Error al crear plaza');
 	}
 }
 

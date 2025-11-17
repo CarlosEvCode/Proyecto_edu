@@ -4,8 +4,12 @@ export function AddPersonalModal({
 	isOpen,
 	onClose,
 	onSave,
-	cargos,
-	especialidades,
+	cargos = [],
+	especialidades = [],
+	niveles = [],
+	escalas = [],
+	condiciones = [],
+	sistemas = [],
 	isLoading,
 }) {
 	const [formData, setFormData] = useState({
@@ -15,9 +19,19 @@ export function AddPersonalModal({
 		fecha_nacimiento: '',
 		numero_celular: '',
 		codigo_modular: '',
+		sistema_pensiones_id: '',
+		fecha_inicio_ejercicio_general: '',
 		plaza_codigo: '',
+		resolucion_nombramiento: '',
+		fecha_nombramiento_carrera: '',
+		fecha_ingreso_institucion: '',
 		cargo_id: '',
 		especialidad_id: '',
+		nivel_educativo_id: '',
+		escala_magisterial_id: '',
+		condicion_id: '',
+		jornada_laboral: '',
+		remuneracion_bruta: '',
 	});
 
 	const [errors, setErrors] = useState({});
@@ -59,22 +73,11 @@ export function AddPersonalModal({
 	const handleSubmit = () => {
 		if (validateForm()) {
 			onSave(formData);
-			setFormData({
-				nombres: '',
-				apellidos: '',
-				dni: '',
-				fecha_nacimiento: '',
-				numero_celular: '',
-				codigo_modular: '',
-				plaza_codigo: '',
-				cargo_id: '',
-				especialidad_id: '',
-			});
-			setErrors({});
+			resetForm();
 		}
 	};
 
-	const handleClose = () => {
+	const resetForm = () => {
 		setFormData({
 			nombres: '',
 			apellidos: '',
@@ -82,11 +85,25 @@ export function AddPersonalModal({
 			fecha_nacimiento: '',
 			numero_celular: '',
 			codigo_modular: '',
+			sistema_pensiones_id: '',
+			fecha_inicio_ejercicio_general: '',
 			plaza_codigo: '',
+			resolucion_nombramiento: '',
+			fecha_nombramiento_carrera: '',
+			fecha_ingreso_institucion: '',
 			cargo_id: '',
 			especialidad_id: '',
+			nivel_educativo_id: '',
+			escala_magisterial_id: '',
+			condicion_id: '',
+			jornada_laboral: '',
+			remuneracion_bruta: '',
 		});
 		setErrors({});
+	};
+
+	const handleClose = () => {
+		resetForm();
 		onClose();
 	};
 
@@ -103,9 +120,9 @@ export function AddPersonalModal({
 					</button>
 				</div>
 
-				{/* Content */}
-				<div className="modal-content">
-					{/* Personal Info */}
+				{/* Content - Scrollable */}
+				<div className="modal-content" style={{maxHeight: '70vh', overflowY: 'auto'}}>
+					{/* Información del Personal */}
 					<div className="form-section">
 						<h3>Información del Personal</h3>
 						<div className="form-grid">
@@ -161,7 +178,31 @@ export function AddPersonalModal({
 						</div>
 					</div>
 
-					{/* Plaza Info */}
+					{/* Antigüedad y Servicio */}
+					<div className="form-section">
+						<h3>Antigüedad y Servicio</h3>
+						<div className="form-grid">
+							<SelectFormField
+								label="Sistema de Pensiones"
+								name="sistema_pensiones_id"
+								value={formData.sistema_pensiones_id}
+								onChange={handleInputChange}
+								options={[
+									{value: '', label: 'Seleccionar...'},
+									...sistemas.map((s) => ({value: s.id, label: s.nombre})),
+								]}
+							/>
+							<FormField
+								label="Fecha Inicio Ejercicio General"
+								name="fecha_inicio_ejercicio_general"
+								type="date"
+								value={formData.fecha_inicio_ejercicio_general}
+								onChange={handleInputChange}
+							/>
+						</div>
+					</div>
+
+					{/* Información de Plaza */}
 					<div className="form-section">
 						<h3>Información de Plaza</h3>
 						<div className="form-grid">
@@ -172,6 +213,34 @@ export function AddPersonalModal({
 								onChange={handleInputChange}
 								placeholder="Código de plaza (opcional)"
 							/>
+							<FormField
+								label="Resolución de Nombramiento"
+								name="resolucion_nombramiento"
+								value={formData.resolucion_nombramiento}
+								onChange={handleInputChange}
+								placeholder="Ej: RES-2024-001"
+							/>
+							<FormField
+								label="Fecha Nombramiento"
+								name="fecha_nombramiento_carrera"
+								type="date"
+								value={formData.fecha_nombramiento_carrera}
+								onChange={handleInputChange}
+							/>
+							<FormField
+								label="Fecha Ingreso a Institución"
+								name="fecha_ingreso_institucion"
+								type="date"
+								value={formData.fecha_ingreso_institucion}
+								onChange={handleInputChange}
+							/>
+						</div>
+					</div>
+
+					{/* Datos de Puesto */}
+					<div className="form-section">
+						<h3>Datos de Puesto</h3>
+						<div className="form-grid">
 							<SelectFormField
 								label="Cargo"
 								name="cargo_id"
@@ -191,6 +260,60 @@ export function AddPersonalModal({
 									{value: '', label: 'Seleccionar...'},
 									...especialidades.map((e) => ({value: e.id, label: e.nombre})),
 								]}
+							/>
+							<SelectFormField
+								label="Nivel Educativo"
+								name="nivel_educativo_id"
+								value={formData.nivel_educativo_id}
+								onChange={handleInputChange}
+								options={[
+									{value: '', label: 'Seleccionar...'},
+									...niveles.map((n) => ({value: n.id, label: n.nombre})),
+								]}
+							/>
+							<SelectFormField
+								label="Escala Magisterial"
+								name="escala_magisterial_id"
+								value={formData.escala_magisterial_id}
+								onChange={handleInputChange}
+								options={[
+									{value: '', label: 'Seleccionar...'},
+									...escalas.map((e) => ({value: e.id, label: e.nombre})),
+								]}
+							/>
+							<SelectFormField
+								label="Condición"
+								name="condicion_id"
+								value={formData.condicion_id}
+								onChange={handleInputChange}
+								options={[
+									{value: '', label: 'Seleccionar...'},
+									...condiciones.map((c) => ({value: c.id, label: c.nombre})),
+								]}
+							/>
+						</div>
+					</div>
+
+					{/* Información Laboral */}
+					<div className="form-section">
+						<h3>Información Laboral</h3>
+						<div className="form-grid">
+							<FormField
+								label="Jornada Laboral (horas)"
+								name="jornada_laboral"
+								type="number"
+								value={formData.jornada_laboral}
+								onChange={handleInputChange}
+								placeholder="Ej: 40"
+							/>
+							<FormField
+								label="Remuneración Bruta (S/.)"
+								name="remuneracion_bruta"
+								type="number"
+								value={formData.remuneracion_bruta}
+								onChange={handleInputChange}
+								placeholder="Ej: 3500.00"
+								step="0.01"
 							/>
 						</div>
 					</div>
@@ -222,6 +345,7 @@ function FormField({
 	type = 'text',
 	placeholder = '',
 	maxLength = '',
+	step = '',
 }) {
 	return (
 		<div className="form-field">
@@ -233,6 +357,7 @@ function FormField({
 				onChange={onChange}
 				placeholder={placeholder}
 				maxLength={maxLength}
+				step={step}
 				className={error ? 'error' : ''}
 			/>
 			{error && <span className="form-field-error">{error}</span>}

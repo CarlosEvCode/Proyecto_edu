@@ -28,6 +28,8 @@ export function AppPage() {
 		setEscalasMagisteriales,
 		condiciones,
 		setCondiciones,
+		sistemasPensiones,
+		setSistemasPensiones,
 		pagination,
 		updatePagination,
 		filters,
@@ -118,12 +120,14 @@ export function AppPage() {
 				nivelesData,
 				escalasData,
 				condicionesData,
+				sistemasData,
 			] = await Promise.all([
 				api.getCargos(),
 				api.getEspecialidades(),
 				api.getNivelesEducativos(),
 				api.getEscalasMagisteriales(),
 				api.getCondiciones(),
+				api.getSistemasPensiones(),
 			]);
 
 			if (!requestController.isActive(token)) return;
@@ -133,6 +137,7 @@ export function AppPage() {
 			setNivelEducativo(Array.isArray(nivelesData) ? nivelesData : []);
 			setEscalasMagisteriales(Array.isArray(escalasData) ? escalasData : []);
 			setCondiciones(Array.isArray(condicionesData) ? condicionesData : []);
+			setSistemasPensiones(Array.isArray(sistemasData) ? sistemasData : []);
 		} catch (error) {
 			if (requestController.isActive(token)) {
 				showNotification('Error al cargar opciones de filtro', 'error');
@@ -261,6 +266,7 @@ export function AppPage() {
 		try {
 			setIsSavingPersonal(true);
 
+			// Primero crear el personal
 			const personalData = {
 				nombres: formData.nombres,
 				apellidos: formData.apellidos,
@@ -268,9 +274,47 @@ export function AppPage() {
 				fecha_nacimiento: formData.fecha_nacimiento || null,
 				numero_celular: formData.numero_celular || null,
 				codigo_modular: formData.codigo_modular,
+				sistema_pensiones_id: formData.sistema_pensiones_id
+					? parseInt(formData.sistema_pensiones_id, 10)
+					: null,
+				fecha_inicio_ejercicio_general: formData.fecha_inicio_ejercicio_general || null,
 			};
 
-			await api.createPersonal(personalData);
+			const personalResult = await api.createPersonal(personalData);
+			const dniDocente = personalResult.dni || formData.dni; // Usar el DNI que se envió
+
+			// Luego crear la plaza si se proporciona información
+			if (formData.plaza_codigo || formData.cargo_id) {
+				const plazaData = {
+					dni_personal_asignado: dniDocente,
+					codigo_plaza: formData.plaza_codigo || `PLAZA-${Date.now()}`,
+					cargo_id: formData.cargo_id ? parseInt(formData.cargo_id, 10) : null,
+					especialidad_id: formData.especialidad_id
+						? parseInt(formData.especialidad_id, 10)
+						: null,
+					nivel_educativo_id: formData.nivel_educativo_id
+						? parseInt(formData.nivel_educativo_id, 10)
+						: null,
+					escala_magisterial_id: formData.escala_magisterial_id
+						? parseInt(formData.escala_magisterial_id, 10)
+						: null,
+					condicion_id: formData.condicion_id
+						? parseInt(formData.condicion_id, 10)
+						: null,
+					resolucion_nombramiento: formData.resolucion_nombramiento || null,
+					fecha_nombramiento_carrera: formData.fecha_nombramiento_carrera || null,
+					fecha_ingreso_institucion: formData.fecha_ingreso_institucion || null,
+					jornada_laboral: formData.jornada_laboral
+						? parseInt(formData.jornada_laboral, 10)
+						: null,
+					remuneracion_bruta: formData.remuneracion_bruta
+						? parseFloat(formData.remuneracion_bruta)
+						: null,
+				};
+
+				await api.createPlaza(plazaData);
+			}
+
 			cache.invalidate('personal');
 			await loadPersonal(1, pagination.limit);
 			setIsAddModalOpen(false);
@@ -539,6 +583,10 @@ export function AppPage() {
 				onSave={handleAddPersonal}
 				cargos={cargos}
 				especialidades={especialidades}
+				niveles={nivelEducativo}
+				escalas={escalasMagisteriales}
+				condiciones={condiciones}
+				sistemas={sistemasPensiones}
 				isLoading={isSavingPersonal}
 			/>
 			{/* Notification */}
