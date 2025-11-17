@@ -32,6 +32,19 @@ export function PersonalDetailModal({
 		return age;
 	};
 
+	const calculateYearsOfService = (startDate) => {
+		if (!startDate) return 'N/A';
+		const [year, month, day] = startDate.split('-').map((n) => parseInt(n, 10));
+		const start = new Date(year, month - 1, day);
+		const today = new Date();
+		let years = today.getFullYear() - start.getFullYear();
+		const monthDiff = today.getMonth() - start.getMonth();
+		if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < start.getDate())) {
+			years--;
+		}
+		return years;
+	};
+
 	const handleInputChange = (e) => {
 		const {name, value} = e.target;
 		if (name.startsWith('plaza_')) {
@@ -137,26 +150,81 @@ export function PersonalDetailModal({
 						</div>
 					</div>
 
-					{/* Sistema de Pensiones Info */}
-					{editedData.sistema_pensiones && (
-						<div className="detail-section">
-							<h4>Sistema de Pensiones</h4>
-							<div className="detail-grid">
+					{/* Antigüedad y Servicio */}
+					<div className="detail-section">
+						<h4>Antigüedad y Servicio</h4>
+						<div className="detail-grid">
+							{editedData.sistema_pensiones && (
 								<DetailField
-									label="Sistema"
+									label="Sistema de Pensiones"
 									value={editedData.sistema_pensiones.nombre}
 									isEditMode={false}
 								/>
-								{editedData.fecha_inicio_ejercicio_general && (
+							)}
+							<DetailField
+								label="Fecha Inicio Ejercicio General"
+								value={editedData.fecha_inicio_ejercicio_general}
+								isEditMode={isEditMode}
+								onChange={handleInputChange}
+								name="fecha_inicio_ejercicio_general"
+								type="date"
+							/>
+							{editedData.fecha_inicio_ejercicio_general && (
+								<DetailField
+									label="Años de Servicio General"
+									value={`${calculateYearsOfService(
+										editedData.fecha_inicio_ejercicio_general
+									)} años`}
+									isEditMode={false}
+								/>
+							)}
+							{editedData.plaza && (
+								<>
 									<DetailField
-										label="Fecha Inicio Ejercicio"
-										value={editedData.fecha_inicio_ejercicio_general}
-										isEditMode={false}
+										label="Resolución de Nombramiento"
+										value={editedData.plaza.resolucion_nombramiento}
+										isEditMode={isEditMode}
+										onChange={handleInputChange}
+										name="plaza_resolucion_nombramiento"
 									/>
-								)}
-							</div>
+									<DetailField
+										label="Fecha Nombramiento"
+										value={editedData.plaza.fecha_nombramiento_carrera}
+										isEditMode={isEditMode}
+										onChange={handleInputChange}
+										name="plaza_fecha_nombramiento_carrera"
+										type="date"
+									/>
+									{editedData.plaza.fecha_nombramiento_carrera && (
+										<DetailField
+											label="Años desde Nombramiento"
+											value={`${calculateYearsOfService(
+												editedData.plaza.fecha_nombramiento_carrera
+											)} años`}
+											isEditMode={false}
+										/>
+									)}
+									<DetailField
+										label="Fecha Ingreso a Institución"
+										value={editedData.plaza.fecha_ingreso_institucion}
+										isEditMode={isEditMode}
+										onChange={handleInputChange}
+										name="plaza_fecha_ingreso_institucion"
+										type="date"
+									/>
+									{editedData.plaza.fecha_ingreso_institucion && (
+										<DetailField
+											label="Años en la Institución"
+											value={`${calculateYearsOfService(
+												editedData.plaza.fecha_ingreso_institucion
+											)} años`}
+											isEditMode={false}
+										/>
+									)}
+								</>
+							)}
 						</div>
-					)}
+					</div>
 
 					{/* Plaza Info */}
 					{editedData.plaza && (
@@ -170,7 +238,6 @@ export function PersonalDetailModal({
 									onChange={handleInputChange}
 									name="plaza_codigo_plaza"
 								/>
-
 								{editedData.plaza.cargo && (
 									<DetailField
 										label="Cargo"
@@ -178,7 +245,6 @@ export function PersonalDetailModal({
 										isEditMode={false}
 									/>
 								)}
-
 								{editedData.plaza.especialidad && (
 									<DetailField
 										label="Especialidad"
@@ -186,7 +252,6 @@ export function PersonalDetailModal({
 										isEditMode={false}
 									/>
 								)}
-
 								{editedData.plaza.nivel_educativo && (
 									<DetailField
 										label="Nivel Educativo"
@@ -194,7 +259,6 @@ export function PersonalDetailModal({
 										isEditMode={false}
 									/>
 								)}
-
 								{editedData.plaza.escala_magisterial && (
 									<DetailField
 										label="Escala Magisterial"
@@ -202,7 +266,6 @@ export function PersonalDetailModal({
 										isEditMode={false}
 									/>
 								)}
-
 								{editedData.plaza.condicion && (
 									<DetailField
 										label="Condición"
@@ -210,7 +273,6 @@ export function PersonalDetailModal({
 										isEditMode={false}
 									/>
 								)}
-
 								{editedData.plaza.remuneracion_bruta && (
 									<DetailField
 										label="Remuneración Bruta"
@@ -218,27 +280,10 @@ export function PersonalDetailModal({
 										isEditMode={false}
 									/>
 								)}
-
 								{editedData.plaza.jornada_laboral && (
 									<DetailField
 										label="Jornada Laboral (horas)"
 										value={editedData.plaza.jornada_laboral}
-										isEditMode={false}
-									/>
-								)}
-
-								{editedData.plaza.fecha_nombramiento_carrera && (
-									<DetailField
-										label="Fecha Nombramiento"
-										value={editedData.plaza.fecha_nombramiento_carrera}
-										isEditMode={false}
-									/>
-								)}
-
-								{editedData.plaza.fecha_ingreso_institucion && (
-									<DetailField
-										label="Fecha Ingreso"
-										value={editedData.plaza.fecha_ingreso_institucion}
 										isEditMode={false}
 									/>
 								)}

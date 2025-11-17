@@ -102,12 +102,12 @@ export function AppPage() {
 
 	const loadFilterOptions = async () => {
 		const token = requestController.startRequest(
-requestController.tokens.filterOptions
-);
+			requestController.tokens.filterOptions
+		);
 
 		try {
 			const [cargosData, especialidadesData] = await Promise.all([
-api.getCargos(),
+				api.getCargos(),
 				api.getEspecialidades(),
 			]);
 
@@ -124,8 +124,8 @@ api.getCargos(),
 
 	const loadPersonal = async (page = 1, limit = 24) => {
 		const token = requestController.startRequest(
-requestController.tokens.personalList
-);
+			requestController.tokens.personalList
+		);
 
 		try {
 			setIsLoading(true);
@@ -154,7 +154,7 @@ requestController.tokens.personalList
 	};
 
 	const handleSearch = useCallback(
-(newFilters) => {
+		(newFilters) => {
 			updatePagination({page: 1});
 		},
 		[updatePagination]
@@ -176,9 +176,33 @@ requestController.tokens.personalList
 				fecha_nacimiento: updatedPersonal.fecha_nacimiento || null,
 				numero_celular: updatedPersonal.numero_celular || null,
 				codigo_modular: updatedPersonal.codigo_modular,
+				fecha_inicio_ejercicio_general:
+					updatedPersonal.fecha_inicio_ejercicio_general || null,
 			};
 
 			await api.updatePersonal(updatedPersonal.dni, personalData);
+
+			// Actualizar campos de plaza si existen
+			if (updatedPersonal.plaza) {
+				const plazaData = {};
+				if (updatedPersonal.plaza.resolucion_nombramiento !== undefined) {
+					plazaData.resolucion_nombramiento =
+						updatedPersonal.plaza.resolucion_nombramiento || null;
+				}
+				if (updatedPersonal.plaza.fecha_nombramiento_carrera !== undefined) {
+					plazaData.fecha_nombramiento_carrera =
+						updatedPersonal.plaza.fecha_nombramiento_carrera || null;
+				}
+				if (updatedPersonal.plaza.fecha_ingreso_institucion !== undefined) {
+					plazaData.fecha_ingreso_institucion =
+						updatedPersonal.plaza.fecha_ingreso_institucion || null;
+				}
+
+				// Solo actualizar si hay campos para actualizar
+				if (Object.keys(plazaData).length > 0) {
+					await api.updatePlaza(updatedPersonal.plaza.codigo_plaza, plazaData);
+				}
+			}
 
 			cache.invalidate('personal');
 			await loadPersonal(pagination.page, pagination.limit);
@@ -262,7 +286,7 @@ requestController.tokens.personalList
 	const userInitial = getInitial(user?.full_name || user?.email);
 
 	return (
-<div style={{minHeight: '100vh', background: '#fafafa'}}>
+		<div style={{minHeight: '100vh', background: '#fafafa'}}>
 			{/* Header */}
 			<header className="app-header">
 				<div className="header-content">
@@ -430,14 +454,14 @@ requestController.tokens.personalList
 
 					{/* Personal List */}
 					{isLoading && personal.length === 0 ? (
-<div className="loading-spinner show">
+						<div className="loading-spinner show">
 							<LoadingSpinner />
 						</div>
 					) : personal.length > 0 ? (
-<>
+						<>
 							<div className="results-grid">
 								{personal.map((personalItem) => (
-<PersonalCard
+									<PersonalCard
 										key={personalItem.dni}
 										personal={personalItem}
 										onClick={() => handlePersonalClick(personalItem)}
@@ -455,7 +479,7 @@ requestController.tokens.personalList
 							</div>
 						</>
 					) : (
-<div className="no-results">
+						<div className="no-results">
 							<span className="material-icons">search_off</span>
 							<h3>No se encontraron resultados</h3>
 							<p>Intenta ajustar los filtros o modificar la búsqueda</p>

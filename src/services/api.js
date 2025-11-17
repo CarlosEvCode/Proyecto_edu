@@ -333,8 +333,14 @@ export async function createPersonal(personalData) {
  */
 export async function updatePersonal(dni, personalData) {
 	try {
-		const {nombres, apellidos, fecha_nacimiento, numero_celular, codigo_modular} =
-			personalData;
+		const {
+			nombres,
+			apellidos,
+			fecha_nacimiento,
+			numero_celular,
+			codigo_modular,
+			fecha_inicio_ejercicio_general,
+		} = personalData;
 
 		const updateData = {
 			nombres,
@@ -342,6 +348,7 @@ export async function updatePersonal(dni, personalData) {
 			fecha_nacimiento: fecha_nacimiento || null,
 			numero_celular: numero_celular || null,
 			codigo_modular,
+			fecha_inicio_ejercicio_general: fecha_inicio_ejercicio_general || null,
 		};
 
 		const {error} = await supabase
