@@ -49,7 +49,7 @@ export function useCache(duration = 5 * 60 * 1000) {
 export function useRequestController() {
 	const tokensRef = useRef({
 		filterOptions: Symbol('filterOptions'),
-		studentsList: Symbol('studentsList'),
+		personalList: Symbol('personalList'),
 		search: Symbol('search'),
 	});
 

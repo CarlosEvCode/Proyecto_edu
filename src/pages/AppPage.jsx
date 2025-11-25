@@ -2,14 +2,12 @@ import React, {useState, useEffect, useCallback} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useAuth} from '../hooks/useAuth';
 import {usePersonalContext} from '../context/PersonalContext';
-import {useCache, useRequestController} from '../hooks/useCache';
 import {PersonalCard} from '../components/PersonalCard';
 import {SearchAndFiltersPersonal} from '../components/SearchAndFiltersPersonal';
 import {Pagination} from '../components/Pagination';
 import {PersonalDetailModal} from '../components/PersonalDetailModal';
 import {AddPersonalModal} from '../components/AddPersonalModal';
 import {Notification, LoadingSpinner} from '../components/Common';
-import * as api from '../services/api';
 import {supabase} from '../lib/supabase';
 
 export function AppPage() {
@@ -17,34 +15,25 @@ export function AppPage() {
 	const {user, logout} = useAuth();
 	const {
 		personal,
-		setPersonal,
 		cargos,
-		setCargos,
 		especialidades,
-		setEspecialidades,
 		nivelEducativo,
-		setNivelEducativo,
 		escalasMagisteriales,
-		setEscalasMagisteriales,
 		condiciones,
-		setCondiciones,
 		sistemasPensiones,
-		setSistemasPensiones,
 		pagination,
 		updatePagination,
-		filters,
-		setIsLoading,
-		isLoading,
+		loading,
+		fetchPersonal,
+		addPersonal,
+		editPersonal,
+		removePersonal,
 	} = usePersonalContext();
-
-	const cache = useCache();
-	const requestController = useRequestController();
 
 	const [selectedPersonal, setSelectedPersonal] = useState(null);
 	const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 	const [notification, setNotification] = useState(null);
-	const [isSavingPersonal, setIsSavingPersonal] = useState(false);
 	const [showUserDropdown, setShowUserDropdown] = useState(false);
 	const [showMobileDrawer, setShowMobileDrawer] = useState(false);
 	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -98,83 +87,11 @@ export function AppPage() {
 		return () => clearInterval(interval);
 	}, [navigate, logout]);
 
-	// Cargar opciones de filtro una sola vez
+	// Cargar datos iniciales
 	useEffect(() => {
-		loadFilterOptions();
-	}, []);
-
-	// Cargar personal cuando cambian los filtros o paginación
-	useEffect(() => {
-		loadPersonal(pagination.page, pagination.limit);
-	}, [filters, pagination.page, pagination.limit]);
-
-	const loadFilterOptions = async () => {
-		const token = requestController.startRequest(
-			requestController.tokens.filterOptions
-		);
-
-		try {
-			const [
-				cargosData,
-				especialidadesData,
-				nivelesData,
-				escalasData,
-				condicionesData,
-				sistemasData,
-			] = await Promise.all([
-				api.getCargos(),
-				api.getEspecialidades(),
-				api.getNivelesEducativos(),
-				api.getEscalasMagisteriales(),
-				api.getCondiciones(),
-				api.getSistemasPensiones(),
-			]);
-
-			if (!requestController.isActive(token)) return;
-
-			setCargos(Array.isArray(cargosData) ? cargosData : []);
-			setEspecialidades(Array.isArray(especialidadesData) ? especialidadesData : []);
-			setNivelEducativo(Array.isArray(nivelesData) ? nivelesData : []);
-			setEscalasMagisteriales(Array.isArray(escalasData) ? escalasData : []);
-			setCondiciones(Array.isArray(condicionesData) ? condicionesData : []);
-			setSistemasPensiones(Array.isArray(sistemasData) ? sistemasData : []);
-		} catch (error) {
-			if (requestController.isActive(token)) {
-				showNotification('Error al cargar opciones de filtro', 'error');
-			}
-		}
-	};
-
-	const loadPersonal = async (page = 1, limit = 24) => {
-		const token = requestController.startRequest(
-			requestController.tokens.personalList
-		);
-
-		try {
-			setIsLoading(true);
-
-			const hasFilters =
-				filters.search || filters.cargo || filters.especialidad || filters.nivel;
-
-			let data;
-			if (hasFilters) {
-				data = await api.searchPersonal(filters, page, limit);
-			} else {
-				data = await api.getPersonal(page, limit);
-			}
-
-			if (!requestController.isActive(token)) return;
-
-			setPersonal(data.personal || []);
-			updatePagination(data.pagination);
-		} catch (error) {
-			if (requestController.isActive(token)) {
-				showNotification('Error al cargar personal: ' + error.message, 'error');
-			}
-		} finally {
-			setIsLoading(false);
-		}
-	};
+		console.log('AppPage mounted, fetching initial data...');
+		fetchPersonal(pagination.page);
+	}, [fetchPersonal, pagination.page]);
 
 	const handleSearch = useCallback(
 		(newFilters) => {
@@ -190,8 +107,6 @@ export function AppPage() {
 
 	const handleSavePersonal = async (updatedPersonal) => {
 		try {
-			setIsSavingPersonal(true);
-
 			const personalData = {
 				nombres: updatedPersonal.nombres,
 				apellidos: updatedPersonal.apellidos,
@@ -203,11 +118,12 @@ export function AppPage() {
 					updatedPersonal.fecha_inicio_ejercicio_general || null,
 			};
 
-			await api.updatePersonal(updatedPersonal.dni, personalData);
-
-			// Actualizar campos de plaza si existen
+			// Preparar datos de plaza si existen
+			let plazaData = null;
 			if (updatedPersonal.plaza) {
-				const plazaData = {};
+				plazaData = {
+					codigo_plaza: updatedPersonal.plaza.codigo_plaza,
+				};
 				if (updatedPersonal.plaza.resolucion_nombramiento !== undefined) {
 					plazaData.resolucion_nombramiento =
 						updatedPersonal.plaza.resolucion_nombramiento || null;
@@ -229,43 +145,28 @@ export function AppPage() {
 				if (updatedPersonal.plaza.nivel_educativo?.id !== undefined) {
 					plazaData.nivel_educativo_id = updatedPersonal.plaza.nivel_educativo.id || null;
 				}
-
-				// Solo actualizar si hay campos para actualizar
-				if (Object.keys(plazaData).length > 0) {
-					await api.updatePlaza(updatedPersonal.plaza.codigo_plaza, plazaData);
-				}
 			}
 
-			cache.invalidate('personal');
-			await loadPersonal(pagination.page, pagination.limit);
+			await editPersonal(updatedPersonal.dni, personalData, plazaData);
 			setIsDetailModalOpen(false);
 			showNotification('Personal actualizado exitosamente', 'success');
 		} catch (error) {
 			showNotification('Error al guardar cambios: ' + error.message, 'error');
-		} finally {
-			setIsSavingPersonal(false);
 		}
 	};
 
 	const handleDeletePersonal = async (dni) => {
 		try {
-			setIsSavingPersonal(true);
-			await api.deletePersonal(dni);
-			cache.invalidate('personal');
-			await loadPersonal(pagination.page, pagination.limit);
+			await removePersonal(dni);
 			setIsDetailModalOpen(false);
 			showNotification('Personal eliminado exitosamente', 'success');
 		} catch (error) {
 			showNotification('Error al eliminar personal: ' + error.message, 'error');
-		} finally {
-			setIsSavingPersonal(false);
 		}
 	};
 
 	const handleAddPersonal = async (formData) => {
 		try {
-			setIsSavingPersonal(true);
-
 			// Primero crear el personal
 			const personalData = {
 				nombres: formData.nombres,
@@ -280,13 +181,10 @@ export function AppPage() {
 				fecha_inicio_ejercicio_general: formData.fecha_inicio_ejercicio_general || null,
 			};
 
-			const personalResult = await api.createPersonal(personalData);
-			const dniDocente = personalResult.dni || formData.dni; // Usar el DNI que se envió
-
 			// Luego crear la plaza si se proporciona información
+			let plazaData = null;
 			if (formData.plaza_codigo || formData.cargo_id) {
-				const plazaData = {
-					dni_personal_asignado: dniDocente,
+				plazaData = {
 					codigo_plaza: formData.plaza_codigo || `PLAZA-${Date.now()}`,
 					cargo_id: formData.cargo_id ? parseInt(formData.cargo_id, 10) : null,
 					especialidad_id: formData.especialidad_id
@@ -311,18 +209,13 @@ export function AppPage() {
 						? parseFloat(formData.remuneracion_bruta)
 						: null,
 				};
-
-				await api.createPlaza(plazaData);
 			}
 
-			cache.invalidate('personal');
-			await loadPersonal(1, pagination.limit);
+			await addPersonal(personalData, plazaData);
 			setIsAddModalOpen(false);
 			showNotification('Personal creado exitosamente', 'success');
 		} catch (error) {
 			showNotification('Error al crear personal: ' + error.message, 'error');
-		} finally {
-			setIsSavingPersonal(false);
 		}
 	};
 
@@ -522,7 +415,7 @@ export function AppPage() {
 					</div>
 
 					{/* Personal List */}
-					{isLoading && personal.length === 0 ? (
+					{loading && personal.length === 0 ? (
 						<div className="loading-spinner show">
 							<LoadingSpinner />
 						</div>
@@ -587,7 +480,7 @@ export function AppPage() {
 				escalas={escalasMagisteriales}
 				condiciones={condiciones}
 				sistemas={sistemasPensiones}
-				isLoading={isSavingPersonal}
+				isLoading={loading}
 			/>
 			{/* Notification */}
 			{notification && (

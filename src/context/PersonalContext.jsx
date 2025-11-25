@@ -1,81 +1,23 @@
-import React, {createContext, useState, useCallback} from 'react';
+import React, {createContext, useContext} from 'react';
+import {usePersonal} from '../hooks/usePersonal';
+import {useCatalogs} from '../hooks/useCatalogs';
 
 export const PersonalContext = createContext();
 
 export function PersonalProvider({children}) {
-	const [personal, setPersonal] = useState([]);
-	const [cargos, setCargos] = useState([]);
-	const [especialidades, setEspecialidades] = useState([]);
-	const [nivelEducativo, setNivelEducativo] = useState([]);
-	const [escalasMagisteriales, setEscalasMagisteriales] = useState([]);
-	const [condiciones, setCondiciones] = useState([]);
-	const [sistemasPensiones, setSistemasPensiones] = useState([]);
-
-	const [pagination, setPagination] = useState({
-		page: 1,
-		limit: 24,
-		total: 0,
-		totalPages: 0,
-		hasNext: false,
-		hasPrev: false,
-	});
-
-	const [filters, setFilters] = useState({
-		search: '',
-		cargo: '',
-		especialidad: '',
-		nivel: '',
-		searchType: 'general',
-	});
-
-	const [isLoading, setIsLoading] = useState(false);
-
-	const updatePagination = useCallback((newPagination) => {
-		setPagination((prev) => ({
-			...prev,
-			...newPagination,
-		}));
-	}, []);
-
-	const updateFilters = useCallback((newFilters) => {
-		setFilters((prev) => ({
-			...prev,
-			...newFilters,
-		}));
-	}, []);
-
-	const resetFilters = useCallback(() => {
-		setFilters({
-			search: '',
-			cargo: '',
-			especialidad: '',
-			nivel: '',
-			searchType: 'general',
-		});
-	}, []);
+	const personalLogic = usePersonal();
+	const catalogsLogic = useCatalogs();
 
 	const value = {
-		personal,
-		setPersonal,
-		cargos,
-		setCargos,
-		especialidades,
-		setEspecialidades,
-		nivelEducativo,
-		setNivelEducativo,
-		escalasMagisteriales,
-		setEscalasMagisteriales,
-		condiciones,
-		setCondiciones,
-		sistemasPensiones,
-		setSistemasPensiones,
-		pagination,
-		updatePagination,
-		filters,
-		updateFilters,
-		resetFilters,
-		isLoading,
-		setIsLoading,
+		...personalLogic,
+		...catalogsLogic,
+		// Alias para mantener compatibilidad con componentes existentes si es necesario
+		cargos: catalogsLogic.catalogs.cargos,
+		especialidades: catalogsLogic.catalogs.especialidades,
+		nivelEducativo: catalogsLogic.catalogs.nivelesEducativos,
+		escalasMagisteriales: catalogsLogic.catalogs.escalasMagisteriales,
+		condiciones: catalogsLogic.catalogs.condiciones,
+		sistemasPensiones: catalogsLogic.catalogs.sistemasPensiones,
 	};
 
 	return (
@@ -87,7 +29,7 @@ export function PersonalProvider({children}) {
  * Hook para usar el PersonalContext
  */
 export function usePersonalContext() {
-	const context = React.useContext(PersonalContext);
+	const context = useContext(PersonalContext);
 	if (!context) {
 		throw new Error('usePersonalContext debe ser usado dentro de PersonalProvider');
 	}

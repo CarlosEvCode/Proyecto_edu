@@ -1,3 +1,7 @@
+/* Importar Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
 /* Reset y variables */
 * {
 	margin: 0;
@@ -55,9 +59,7 @@ body {
 	-moz-osx-font-smoothing: grayscale;
 }
 
-/* Importar Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
 
 .app-container {
 	min-height: 100vh;

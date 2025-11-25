@@ -1,0 +1,29 @@
+AppPage mounted, fetching initial data... AppPage.jsx:92:11
+usePersonal: fetching data for page 1 filters: 
+Object { search: "", cargo: "", especialidad: "", nivel: "" }
+usePersonal.js:33:13
+usePersonal: calling getPersonal usePersonal.js:46:14
+AppPage mounted, fetching initial data... AppPage.jsx:92:11
+usePersonal: fetching data for page 1 filters: 
+Object { search: "", cargo: "", especialidad: "", nivel: "" }
+usePersonal.js:33:13
+usePersonal: calling getPersonal usePersonal.js:46:14
+Fetching personal data with offset: 0 limit: 24 personal.service.js:83:11
+Fetching personal data with offset: 0 limit: 24 personal.service.js:83:11
+Raw data from Supabase: 
+Array(24) [ {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, … ]
+personal.service.js:126:11
+Mapped personal data: 
+Array(24) [ {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, … ]
+personal.service.js:130:11
+usePersonal: data received 
+Object { personal: (24) […], pagination: {…} }
+usePersonal.js:55:13
+Raw data from Supabase: 
+Array(24) [ {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, … ]
+personal.service.js:126:11
+Mapped personal data: 
+Array(24) [ {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, … ]
+personal.service.js:130:11
+usePersonal: data received 
+Object { personal: (24) […], pagination: {…} }
