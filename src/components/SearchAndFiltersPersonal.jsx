@@ -1,5 +1,5 @@
 import React, {useState, useRef} from 'react';
-import {usePersonalContext} from '../context/PersonalContext';
+import {usePersonalContext} from '../hooks/usePersonalContext';
 
 export function SearchAndFiltersPersonal({
 	onSearch,

@@ -1,6 +1,5 @@
-import React, {createContext, useState, useCallback} from 'react';
-
-export const StudentContext = createContext();
+import React, {useState, useCallback} from 'react';
+import {StudentContext} from './student-context';
 
 export function StudentProvider({children}) {
 	const [students, setStudents] = useState([]);
@@ -69,15 +68,4 @@ export function StudentProvider({children}) {
 	return (
 		<StudentContext.Provider value={value}>{children}</StudentContext.Provider>
 	);
-}
-
-/**
- * Hook para usar el StudentContext
- */
-export function useStudentContext() {
-	const context = React.useContext(StudentContext);
-	if (!context) {
-		throw new Error('useStudentContext debe ser usado dentro de StudentProvider');
-	}
-	return context;
 }

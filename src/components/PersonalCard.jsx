@@ -18,21 +18,7 @@ export function PersonalCard({personal, onClick}) {
 		return firstInitial + lastInitial;
 	};
 
-	const calculateAge = (birthDate) => {
-		if (!birthDate) return 'N/A';
-		const [year, month, day] = birthDate.split('-').map((num) => parseInt(num, 10));
-		const birth = new Date(year, month - 1, day);
-		const today = new Date();
-		let age = today.getFullYear() - birth.getFullYear();
-		const monthDiff = today.getMonth() - birth.getMonth();
-		if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-			age--;
-		}
-		return age;
-	};
-
 	const initials = getInitials(personal.nombres, personal.apellidos);
-	const age = calculateAge(personal.fecha_nacimiento);
 
 	// Renderizar vista mobile
 	if (isMobile) {

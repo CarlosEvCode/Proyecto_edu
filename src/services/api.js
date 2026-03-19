@@ -403,17 +403,6 @@ export async function searchPersonal(filters = {}, page = 1, limit = 24) {
 		const offset = (page - 1) * limit;
 		const {search = '', cargo = '', especialidad = '', nivel = ''} = filters;
 
-		// Contar total de resultados
-		let countQuery = supabase
-			.from('tbl_personal')
-			.select('*', {count: 'exact', head: true});
-
-		if (search) {
-			countQuery = countQuery.or(
-				`nombres.ilike.%${search}%,apellidos.ilike.%${search}%,dni.ilike.%${search}%,codigo_modular.ilike.%${search}%`
-			);
-		}
-
 		// Si hay filtros por cargo/especialidad, necesitamos hacer un join
 		if (cargo || especialidad || nivel) {
 			// Usar RPC para contar con filtros complejos

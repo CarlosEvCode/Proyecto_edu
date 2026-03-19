@@ -1,4 +1,4 @@
-import {useEffect, useRef} from 'react';
+import {useRef} from 'react';
 
 /**
  * Hook para gestionar caché de datos

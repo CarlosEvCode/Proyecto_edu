@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {useNavigate, Link, useLocation} from 'react-router-dom';
 import {useAuth} from '../hooks/useAuth';
-import {usePersonalContext} from '../context/PersonalContext';
+import {usePersonalContext} from '../hooks/usePersonalContext';
 import {useCache, useRequestController} from '../hooks/useCache';
 import {PersonalCard} from '../components/PersonalCard';
 import {SearchAndFiltersPersonal} from '../components/SearchAndFiltersPersonal';
@@ -9,6 +9,7 @@ import {Pagination} from '../components/Pagination';
 import {PersonalDetailModal} from '../components/PersonalDetailModal';
 import {AddPersonalModal} from '../components/AddPersonalModal';
 import {Notification, LoadingSpinner} from '../components/Common';
+import {useNotification} from '../hooks/useNotification';
 import * as api from '../services/api';
 import {supabase} from '../lib/supabase';
 
@@ -44,12 +45,13 @@ export function PersonalPage() {
 	const [selectedPersonal, setSelectedPersonal] = useState(null);
 	const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-	const [notification, setNotification] = useState(null);
 	const [isSavingPersonal, setIsSavingPersonal] = useState(false);
 	const [showUserDropdown, setShowUserDropdown] = useState(false);
 	const [showMobileDrawer, setShowMobileDrawer] = useState(false);
 	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 	const [isLoggingOut, setIsLoggingOut] = useState(false);
+	const {notification, notifySuccess, notifyError, clearNotification} =
+		useNotification();
 
 	// Cerrar dropdown al hacer click fuera
 	useEffect(() => {
@@ -99,17 +101,7 @@ export function PersonalPage() {
 		return () => clearInterval(interval);
 	}, [navigate, logout]);
 
-	// Cargar opciones de filtro una sola vez
-	useEffect(() => {
-		loadFilterOptions();
-	}, []);
-
-	// Cargar personal cuando cambian los filtros o paginación
-	useEffect(() => {
-		loadPersonal(pagination.page, pagination.limit);
-	}, [filters, pagination.page, pagination.limit]);
-
-	const loadFilterOptions = async () => {
+	const loadFilterOptions = useCallback(async () => {
 		const token = requestController.startRequest(
 			requestController.tokens.filterOptions
 		);
@@ -139,14 +131,23 @@ export function PersonalPage() {
 			setEscalasMagisteriales(Array.isArray(escalasData) ? escalasData : []);
 			setCondiciones(Array.isArray(condicionesData) ? condicionesData : []);
 			setSistemasPensiones(Array.isArray(sistemasData) ? sistemasData : []);
-		} catch (error) {
+		} catch {
 			if (requestController.isActive(token)) {
-				showNotification('Error al cargar opciones de filtro', 'error');
+				notifyError(null, 'Error al cargar opciones de filtro');
 			}
 		}
-	};
+	}, [
+		requestController,
+		setCargos,
+		setEspecialidades,
+		setNivelEducativo,
+		setEscalasMagisteriales,
+		setCondiciones,
+		setSistemasPensiones,
+		notifyError,
+	]);
 
-	const loadPersonal = async (page = 1, limit = 24) => {
+	const loadPersonal = useCallback(async (page = 1, limit = 24) => {
 		const token = requestController.startRequest(
 			requestController.tokens.personalList
 		);
@@ -170,19 +171,33 @@ export function PersonalPage() {
 			updatePagination(data.pagination);
 		} catch (error) {
 			if (requestController.isActive(token)) {
-				showNotification('Error al cargar personal: ' + error.message, 'error');
+				notifyError(error, 'Error al cargar personal');
 			}
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, [
+		requestController,
+		setIsLoading,
+		filters,
+		setPersonal,
+		updatePagination,
+		notifyError,
+	]);
 
-	const handleSearch = useCallback(
-		(newFilters) => {
-			updatePagination({page: 1});
-		},
-		[updatePagination]
-	);
+	// Cargar opciones de filtro una sola vez
+	useEffect(() => {
+		loadFilterOptions();
+	}, [loadFilterOptions]);
+
+	// Cargar personal cuando cambian los filtros o paginación
+	useEffect(() => {
+		loadPersonal(pagination.page, pagination.limit);
+	}, [loadPersonal, pagination.page, pagination.limit]);
+
+	const handleSearch = useCallback(() => {
+		updatePagination({page: 1});
+	}, [updatePagination]);
 
 	const handlePersonalClick = (personalItem) => {
 		setSelectedPersonal(personalItem);
@@ -240,9 +255,9 @@ export function PersonalPage() {
 			cache.invalidate('personal');
 			await loadPersonal(pagination.page, pagination.limit);
 			setIsDetailModalOpen(false);
-			showNotification('Personal actualizado exitosamente', 'success');
+			notifySuccess('Personal actualizado exitosamente');
 		} catch (error) {
-			showNotification('Error al guardar cambios: ' + error.message, 'error');
+			notifyError(error, 'Error al guardar cambios');
 		} finally {
 			setIsSavingPersonal(false);
 		}
@@ -255,9 +270,9 @@ export function PersonalPage() {
 			cache.invalidate('personal');
 			await loadPersonal(pagination.page, pagination.limit);
 			setIsDetailModalOpen(false);
-			showNotification('Personal eliminado exitosamente', 'success');
+			notifySuccess('Personal eliminado exitosamente');
 		} catch (error) {
-			showNotification('Error al eliminar personal: ' + error.message, 'error');
+			notifyError(error, 'Error al eliminar personal');
 		} finally {
 			setIsSavingPersonal(false);
 		}
@@ -319,9 +334,9 @@ export function PersonalPage() {
 			cache.invalidate('personal');
 			await loadPersonal(1, pagination.limit);
 			setIsAddModalOpen(false);
-			showNotification('Personal creado exitosamente', 'success');
+			notifySuccess('Personal creado exitosamente');
 		} catch (error) {
-			showNotification('Error al crear personal: ' + error.message, 'error');
+			notifyError(error, 'Error al crear personal');
 		} finally {
 			setIsSavingPersonal(false);
 		}
@@ -330,7 +345,7 @@ export function PersonalPage() {
 	const handleLogout = async () => {
 		try {
 			setIsLoggingOut(true);
-			const result = await logout();
+			await logout();
 
 			setShowLogoutConfirm(false);
 			setShowUserDropdown(false);
@@ -344,11 +359,6 @@ export function PersonalPage() {
 		} finally {
 			setIsLoggingOut(false);
 		}
-	};
-
-	const showNotification = (message, type = 'error') => {
-		setNotification({message, type});
-		setTimeout(() => setNotification(null), 5000);
 	};
 
 	const getInitial = (name) => {
@@ -632,7 +642,7 @@ export function PersonalPage() {
 				<Notification
 					message={notification.message}
 					type={notification.type}
-					onClose={() => setNotification(null)}
+					onClose={clearNotification}
 				/>
 			)}
 			{/* Logout Confirmation Modal */}

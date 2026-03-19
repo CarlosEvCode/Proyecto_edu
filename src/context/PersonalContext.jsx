@@ -1,6 +1,5 @@
-import React, {createContext, useState, useCallback} from 'react';
-
-export const PersonalContext = createContext();
+import React, {useState, useCallback} from 'react';
+import {PersonalContext} from './personal-context';
 
 export function PersonalProvider({children}) {
 	const [personal, setPersonal] = useState([]);
@@ -81,15 +80,4 @@ export function PersonalProvider({children}) {
 	return (
 		<PersonalContext.Provider value={value}>{children}</PersonalContext.Provider>
 	);
-}
-
-/**
- * Hook para usar el PersonalContext
- */
-export function usePersonalContext() {
-	const context = React.useContext(PersonalContext);
-	if (!context) {
-		throw new Error('usePersonalContext debe ser usado dentro de PersonalProvider');
-	}
-	return context;
 }

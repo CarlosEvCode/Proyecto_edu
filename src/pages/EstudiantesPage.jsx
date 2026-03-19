@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {useNavigate, Link, useLocation} from 'react-router-dom';
 import {useAuth} from '../hooks/useAuth';
-import {useStudentContext} from '../context/StudentContext';
+import {useStudentContext} from '../hooks/useStudentContext';
 import {useCache, useRequestController} from '../hooks/useCache';
 import {StudentCard} from '../components/StudentCard';
 import {SearchAndFilters} from '../components/SearchAndFilters';
@@ -9,6 +9,7 @@ import {Pagination} from '../components/Pagination';
 import {StudentDetailModal} from '../components/StudentDetailModal';
 import {AddStudentModal} from '../components/AddStudentModal';
 import {Notification, LoadingSpinner} from '../components/Common';
+import {useNotification} from '../hooks/useNotification';
 import * as studentsApi from '../services/studentsApi';
 import {supabase} from '../lib/supabase';
 
@@ -36,13 +37,14 @@ export function EstudiantesPage() {
 	const [selectedStudent, setSelectedStudent] = useState(null);
 	const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-	const [notification, setNotification] = useState(null);
 	const [isSavingStudent, setIsSavingStudent] = useState(false);
 	const [showUserDropdown, setShowUserDropdown] = useState(false);
 	const [showMobileDrawer, setShowMobileDrawer] = useState(false);
 	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 	const [isLoggingOut, setIsLoggingOut] = useState(false);
 	const [stats, setStats] = useState({totalStudents: 0, bySex: {}, byGrade: []});
+	const {notification, notifySuccess, notifyError, clearNotification} =
+		useNotification();
 
 	// Cerrar dropdown al hacer click fuera
 	useEffect(() => {
@@ -92,22 +94,7 @@ export function EstudiantesPage() {
 		return () => clearInterval(interval);
 	}, [navigate, logout]);
 
-	// Cargar opciones de filtro una sola vez
-	useEffect(() => {
-		loadFilterOptions();
-	}, []);
-
-	// Cargar estadísticas una sola vez
-	useEffect(() => {
-		loadStats();
-	}, []);
-
-	// Cargar estudiantes cuando cambian los filtros o paginación
-	useEffect(() => {
-		loadStudents(pagination.page, pagination.limit);
-	}, [filters, pagination.page, pagination.limit]);
-
-	const loadFilterOptions = async () => {
+	const loadFilterOptions = useCallback(async () => {
 		const token = requestController.startRequest(
 			requestController.tokens.filterOptions
 		);
@@ -122,23 +109,23 @@ export function EstudiantesPage() {
 
 			setGrados(Array.isArray(gradosData) ? gradosData : []);
 			setSecciones(Array.isArray(seccionesData) ? seccionesData : []);
-		} catch (error) {
+		} catch {
 			if (requestController.isActive(token)) {
-				showNotification('Error al cargar opciones de filtro', 'error');
+				notifyError(null, 'Error al cargar opciones de filtro');
 			}
 		}
-	};
+	}, [requestController, setGrados, setSecciones, notifyError]);
 
-	const loadStats = async () => {
+	const loadStats = useCallback(async () => {
 		try {
 			const data = await studentsApi.getStudentStats();
 			setStats(data);
-		} catch (error) {
+		} catch {
 			// Silencioso: stats no deben bloquear la pagina
 		}
-	};
+	}, []);
 
-	const loadStudents = async (page = 1, limit = 24) => {
+	const loadStudents = useCallback(async (page = 1, limit = 24) => {
 		const token = requestController.startRequest(
 			requestController.tokens.studentsList
 		);
@@ -177,19 +164,39 @@ export function EstudiantesPage() {
 			updatePagination(data.pagination);
 		} catch (error) {
 			if (requestController.isActive(token)) {
-				showNotification('Error al cargar estudiantes: ' + error.message, 'error');
+				notifyError(error, 'Error al cargar estudiantes');
 			}
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, [
+		requestController,
+		setIsLoading,
+		filters,
+		cache,
+		setStudents,
+		updatePagination,
+		notifyError,
+	]);
 
-	const handleSearch = useCallback(
-		(newFilters) => {
-			updatePagination({page: 1});
-		},
-		[updatePagination]
-	);
+	// Cargar opciones de filtro una sola vez
+	useEffect(() => {
+		loadFilterOptions();
+	}, [loadFilterOptions]);
+
+	// Cargar estadísticas una sola vez
+	useEffect(() => {
+		loadStats();
+	}, [loadStats]);
+
+	// Cargar estudiantes cuando cambian los filtros o paginación
+	useEffect(() => {
+		loadStudents(pagination.page, pagination.limit);
+	}, [loadStudents, pagination.page, pagination.limit]);
+
+	const handleSearch = useCallback(() => {
+		updatePagination({page: 1});
+	}, [updatePagination]);
 
 	const handleStudentClick = (student) => {
 		setSelectedStudent(student);
@@ -237,9 +244,9 @@ export function EstudiantesPage() {
 			await loadStudents(pagination.page, pagination.limit);
 			await loadStats();
 			setIsDetailModalOpen(false);
-			showNotification('Estudiante actualizado exitosamente', 'success');
+			notifySuccess('Estudiante actualizado exitosamente');
 		} catch (error) {
-			showNotification('Error al guardar cambios: ' + error.message, 'error');
+			notifyError(error, 'Error al guardar cambios');
 		} finally {
 			setIsSavingStudent(false);
 		}
@@ -253,9 +260,9 @@ export function EstudiantesPage() {
 			await loadStudents(pagination.page, pagination.limit);
 			await loadStats();
 			setIsDetailModalOpen(false);
-			showNotification('Estudiante eliminado exitosamente', 'success');
+			notifySuccess('Estudiante eliminado exitosamente');
 		} catch (error) {
-			showNotification('Error al eliminar estudiante: ' + error.message, 'error');
+			notifyError(error, 'Error al eliminar estudiante');
 		} finally {
 			setIsSavingStudent(false);
 		}
@@ -269,9 +276,9 @@ export function EstudiantesPage() {
 			await loadStudents(1, pagination.limit);
 			await loadStats();
 			setIsAddModalOpen(false);
-			showNotification('Estudiante creado exitosamente', 'success');
+			notifySuccess('Estudiante creado exitosamente');
 		} catch (error) {
-			showNotification('Error al crear estudiante: ' + error.message, 'error');
+			notifyError(error, 'Error al crear estudiante');
 		} finally {
 			setIsSavingStudent(false);
 		}
@@ -292,11 +299,6 @@ export function EstudiantesPage() {
 		} finally {
 			setIsLoggingOut(false);
 		}
-	};
-
-	const showNotification = (message, type = 'error') => {
-		setNotification({message, type});
-		setTimeout(() => setNotification(null), 5000);
 	};
 
 	const getInitial = (name) => {
@@ -625,7 +627,7 @@ export function EstudiantesPage() {
 				<Notification
 					message={notification.message}
 					type={notification.type}
-					onClose={() => setNotification(null)}
+					onClose={clearNotification}
 				/>
 			)}
 

@@ -2,6 +2,7 @@ import React, {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useAuth} from '../hooks/useAuth';
 import {Notification} from '../components/Common';
+import {useNotification} from '../hooks/useNotification';
 
 export function LoginPage() {
 	const navigate = useNavigate();
@@ -12,8 +13,8 @@ export function LoginPage() {
 		password: '',
 	});
 
-	const [notification, setNotification] = useState(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const {notification, notifyError, clearNotification} = useNotification();
 
 	const handleInputChange = (e) => {
 		const {name, value} = e.target;
@@ -31,19 +32,13 @@ export function LoginPage() {
 			const result = await login(formData.email, formData.password);
 
 			if (result.success) {
-				setNotification(null);
+				clearNotification();
 				navigate('/app');
 			} else {
-				setNotification({
-					message: result.error,
-					type: 'error',
-				});
+				notifyError(result.error, 'Error al iniciar sesión');
 			}
-		} catch (error) {
-			setNotification({
-				message: 'Error al iniciar sesión',
-				type: 'error',
-			});
+		} catch {
+			notifyError(null, 'Error al iniciar sesión');
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -81,7 +76,6 @@ export function LoginPage() {
 					<div
 						style={{
 							padding: '12px 20px',
-							borderRadius: '0',
 							fontSize: '13px',
 							animation: 'slideDown 0.3s ease',
 							borderLeft: '3px solid #b00020',

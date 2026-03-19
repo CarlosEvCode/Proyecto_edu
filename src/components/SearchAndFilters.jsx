@@ -1,5 +1,5 @@
 import React, {useState, useRef} from 'react';
-import {useStudentContext} from '../context/StudentContext';
+import {useStudentContext} from '../hooks/useStudentContext';
 
 export function SearchAndFilters({onSearch, grados, secciones}) {
 	const {filters, updateFilters, resetFilters} = useStudentContext();

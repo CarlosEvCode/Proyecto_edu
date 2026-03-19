@@ -29,3 +29,9 @@ npm run dev
 npm run build
 npm run preview
 ```
+
+## Calidad
+
+- Lint: `npm run lint`
+- Build: `npm run build`
+- CI en GitHub Actions: lint + build en cada Pull Request
