@@ -1,4 +1,4 @@
-import {useRef} from 'react';
+import {useRef, useCallback, useMemo} from 'react';
 
 /**
  * Hook para gestionar caché de datos
@@ -6,11 +6,11 @@ import {useRef} from 'react';
 export function useCache(duration = 5 * 60 * 1000) {
 	const cacheRef = useRef(new Map());
 
-	const getCacheKey = (endpoint, params = {}) => {
+	const getCacheKey = useCallback((endpoint, params = {}) => {
 		return `${endpoint}:${JSON.stringify(params)}`;
-	};
+	}, []);
 
-	const get = (key) => {
+	const get = useCallback((key) => {
 		const item = cacheRef.current.get(key);
 		if (!item) return null;
 
@@ -19,28 +19,31 @@ export function useCache(duration = 5 * 60 * 1000) {
 			return null;
 		}
 		return item.data;
-	};
+	}, [duration]);
 
-	const set = (key, data) => {
+	const set = useCallback((key, data) => {
 		cacheRef.current.set(key, {
 			data,
 			timestamp: Date.now(),
 		});
-	};
+	}, []);
 
-	const invalidate = (pattern) => {
+	const invalidate = useCallback((pattern) => {
 		for (const key of cacheRef.current.keys()) {
 			if (key.includes(pattern)) {
 				cacheRef.current.delete(key);
 			}
 		}
-	};
+	}, []);
 
-	const clear = () => {
+	const clear = useCallback(() => {
 		cacheRef.current.clear();
-	};
+	}, []);
 
-	return {getCacheKey, get, set, invalidate, clear};
+	return useMemo(
+		() => ({getCacheKey, get, set, invalidate, clear}),
+		[getCacheKey, get, set, invalidate, clear]
+	);
 }
 
 /**
@@ -51,38 +54,42 @@ export function useRequestController() {
 		filterOptions: Symbol('filterOptions'),
 		studentsList: Symbol('studentsList'),
 		search: Symbol('search'),
+		personalList: Symbol('personalList'),
 	});
 
 	const activeRequestsRef = useRef(new Map());
 
-	const startRequest = (token) => {
+	const startRequest = useCallback((token) => {
 		activeRequestsRef.current.set(token, true);
 		return token;
-	};
+	}, []);
 
-	const isActive = (token) => {
+	const isActive = useCallback((token) => {
 		return (
 			activeRequestsRef.current.has(token) && activeRequestsRef.current.get(token)
 		);
-	};
+	}, []);
 
-	const cancelRequest = (token) => {
+	const cancelRequest = useCallback((token) => {
 		if (activeRequestsRef.current.has(token)) {
 			activeRequestsRef.current.set(token, false);
 		}
-	};
+	}, []);
 
-	const cancelAllRequests = () => {
+	const cancelAllRequests = useCallback(() => {
 		for (const token of activeRequestsRef.current.keys()) {
 			activeRequestsRef.current.set(token, false);
 		}
-	};
+	}, []);
 
-	return {
-		tokens: tokensRef.current,
-		startRequest,
-		isActive,
-		cancelRequest,
-		cancelAllRequests,
-	};
+	return useMemo(
+		() => ({
+			tokens: tokensRef.current,
+			startRequest,
+			isActive,
+			cancelRequest,
+			cancelAllRequests,
+		}),
+		[startRequest, isActive, cancelRequest, cancelAllRequests]
+	);
 }
