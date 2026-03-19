@@ -4,6 +4,14 @@
  */
 
 import {supabase} from '../lib/supabase';
+import {
+	assertRequired,
+	assertValidBirthDate,
+	assertValidDni,
+	assertValidModularCode,
+	cleanText,
+	normalizeNullableText,
+} from '../utils/validators';
 
 /**
  * Personal - GET todos con paginación
@@ -292,20 +300,56 @@ export async function createPersonal(personalData) {
 			codigo_modular,
 		} = personalData;
 
-		if (!nombres || !apellidos || !dni || !codigo_modular) {
-			throw new Error('Campos obligatorios: nombres, apellidos, dni, codigo_modular');
+		assertRequired(['nombres', 'apellidos', 'dni', 'codigo_modular'], {
+			nombres,
+			apellidos,
+			dni,
+			codigo_modular,
+		});
+		assertValidDni(dni);
+		assertValidBirthDate(fecha_nacimiento);
+		assertValidModularCode(codigo_modular);
+
+		const {data: rpcData, error: rpcError} = await supabase.rpc(
+			'create_personal_full',
+			{
+				p_payload: {
+					nombres: cleanText(nombres),
+					apellidos: cleanText(apellidos),
+					dni: cleanText(dni),
+					fecha_nacimiento: fecha_nacimiento || null,
+					numero_celular: normalizeNullableText(numero_celular),
+					codigo_modular: cleanText(codigo_modular),
+					sistema_pensiones_id: personalData.sistema_pensiones_id || null,
+					fecha_inicio_ejercicio_general:
+						personalData.fecha_inicio_ejercicio_general || null,
+					plaza: personalData.plaza || null,
+				},
+			}
+		);
+
+		if (!rpcError && rpcData?.dni) {
+			return {
+				message: 'Personal creado exitosamente',
+				dni: rpcData.dni,
+				usedRpc: true,
+			};
+		}
+
+		if (rpcError) {
+			console.warn('RPC create_personal_full no disponible, usando fallback:', rpcError.message);
 		}
 
 		const {data, error} = await supabase
 			.from('tbl_personal')
 			.insert([
 				{
-					nombres,
-					apellidos,
-					dni,
+					nombres: cleanText(nombres),
+					apellidos: cleanText(apellidos),
+					dni: cleanText(dni),
 					fecha_nacimiento: fecha_nacimiento || null,
-					numero_celular: numero_celular || null,
-					codigo_modular,
+					numero_celular: normalizeNullableText(numero_celular),
+					codigo_modular: cleanText(codigo_modular),
 				},
 			])
 			.select()
@@ -321,6 +365,7 @@ export async function createPersonal(personalData) {
 		return {
 			message: 'Personal creado exitosamente',
 			dni: data.dni,
+			usedRpc: false,
 		};
 	} catch (error) {
 		console.error('Error al crear personal:', error);
@@ -342,12 +387,25 @@ export async function updatePersonal(dni, personalData) {
 			fecha_inicio_ejercicio_general,
 		} = personalData;
 
-		const updateData = {
+		assertRequired(['nombres', 'apellidos', 'codigo_modular'], {
 			nombres,
 			apellidos,
-			fecha_nacimiento: fecha_nacimiento || null,
-			numero_celular: numero_celular || null,
 			codigo_modular,
+		});
+		assertValidDni(dni);
+		assertValidBirthDate(fecha_nacimiento);
+		assertValidBirthDate(
+			fecha_inicio_ejercicio_general,
+			'Fecha de inicio ejercicio general'
+		);
+		assertValidModularCode(codigo_modular);
+
+		const updateData = {
+			nombres: cleanText(nombres),
+			apellidos: cleanText(apellidos),
+			fecha_nacimiento: fecha_nacimiento || null,
+			numero_celular: normalizeNullableText(numero_celular),
+			codigo_modular: cleanText(codigo_modular),
 			fecha_inicio_ejercicio_general: fecha_inicio_ejercicio_general || null,
 		};
 
@@ -370,6 +428,16 @@ export async function updatePersonal(dni, personalData) {
  */
 export async function deletePersonal(dni) {
 	try {
+		const {error: rpcError} = await supabase.rpc('soft_delete_personal', {
+			p_dni: dni,
+		});
+
+		if (!rpcError) {
+			return {message: 'Personal eliminado exitosamente'};
+		}
+
+		console.warn('RPC soft_delete_personal no disponible, usando fallback:', rpcError.message);
+
 		// Primero, eliminar la plaza asociada si existe
 		const {error: plazaError} = await supabase
 			.from('tbl_plazas')

@@ -4,6 +4,13 @@
  */
 
 import {supabase} from '../lib/supabase';
+import {
+	assertRequired,
+	assertValidBirthDate,
+	assertValidDni,
+	cleanText,
+	normalizeNullableText,
+} from '../utils/validators';
 
 /**
  * Estudiantes - GET todos con paginación
@@ -279,9 +286,50 @@ export async function createStudent(studentData) {
 			direccion,
 		} = studentData;
 
-		// Validar campos requeridos
-		if (!nombres || !apellidos || !dni || !sexo) {
-			throw new Error('Campos obligatorios: nombres, apellidos, dni, sexo');
+		assertRequired(['nombres', 'apellidos', 'dni', 'sexo'], {
+			nombres,
+			apellidos,
+			dni,
+			sexo,
+		});
+		assertValidDni(dni);
+		assertValidBirthDate(fecha_nacimiento);
+
+		if (apoderado?.dni) {
+			assertValidDni(apoderado.dni, 'DNI del apoderado');
+		}
+		if (apoderado?.fecha_nacimiento) {
+			assertValidBirthDate(apoderado.fecha_nacimiento, 'Fecha de nacimiento del apoderado');
+		}
+
+		// Primero intentar vía RPC transaccional
+		const {data: rpcData, error: rpcError} = await supabase.rpc(
+			'create_student_full',
+			{
+				p_payload: {
+					nombres: cleanText(nombres),
+					apellidos: cleanText(apellidos),
+					dni: cleanText(dni),
+					fecha_nacimiento: fecha_nacimiento || null,
+					sexo: cleanText(sexo),
+					discapacidad: normalizeNullableText(discapacidad),
+					grado: grado || null,
+					seccion: seccion || null,
+					apoderado: apoderado || {},
+					direccion: direccion || {},
+				},
+			}
+		);
+
+		if (!rpcError && rpcData?.student_id) {
+			return {
+				message: 'Estudiante creado exitosamente',
+				studentId: rpcData.student_id,
+			};
+		}
+
+		if (rpcError) {
+			console.warn('RPC create_student_full no disponible, usando fallback:', rpcError.message);
 		}
 
 		let apoderadoId = null;
@@ -293,10 +341,10 @@ export async function createStudent(studentData) {
 			const {data: dirData, error: dirError} = await supabase
 				.from('direcciones')
 				.insert([{
-					departamento: direccion.departamento || null,
-					provincia: direccion.provincia || null,
-					distrito: direccion.distrito || null,
-					domicilio: direccion.domicilio || null,
+					departamento: normalizeNullableText(direccion.departamento),
+					provincia: normalizeNullableText(direccion.provincia),
+					distrito: normalizeNullableText(direccion.distrito),
+					domicilio: normalizeNullableText(direccion.domicilio),
 				}])
 				.select()
 				.single();
@@ -310,11 +358,11 @@ export async function createStudent(studentData) {
 			const {data: apoData, error: apoError} = await supabase
 				.from('apoderados')
 				.insert([{
-					nombres: apoderado.nombres || null,
-					apellidos: apoderado.apellidos || null,
-					dni: apoderado.dni || null,
+					nombres: normalizeNullableText(apoderado.nombres),
+					apellidos: normalizeNullableText(apoderado.apellidos),
+					dni: normalizeNullableText(apoderado.dni),
 					fecha_nacimiento: apoderado.fecha_nacimiento || null,
-					celular: apoderado.celular || null,
+					celular: normalizeNullableText(apoderado.celular),
 				}])
 				.select()
 				.single();
@@ -332,12 +380,12 @@ export async function createStudent(studentData) {
 		const {data, error} = await supabase
 			.from('estudiantes')
 			.insert([{
-				nombres,
-				apellidos,
-				dni,
+				nombres: cleanText(nombres),
+				apellidos: cleanText(apellidos),
+				dni: cleanText(dni),
 				fecha_nacimiento: fecha_nacimiento || null,
-				sexo,
-				discapacidad: discapacidad || null,
+				sexo: cleanText(sexo),
+				discapacidad: normalizeNullableText(discapacidad),
 				aula_id: aulaId,
 				apoderado_id: apoderadoId,
 				direccion_id: direccionId,
@@ -378,6 +426,15 @@ export async function updateStudent(id, studentData) {
 			seccion,
 		} = studentData;
 
+		assertRequired(['nombres', 'apellidos', 'dni', 'sexo'], {
+			nombres,
+			apellidos,
+			dni,
+			sexo,
+		});
+		assertValidDni(dni);
+		assertValidBirthDate(fecha_nacimiento);
+
 		let aulaId = null;
 
 		// Obtener aula_id si se proporciona grado y sección
@@ -386,12 +443,12 @@ export async function updateStudent(id, studentData) {
 		}
 
 		const updateData = {
-			nombres,
-			apellidos,
-			dni,
+			nombres: cleanText(nombres),
+			apellidos: cleanText(apellidos),
+			dni: cleanText(dni),
 			fecha_nacimiento: fecha_nacimiento || null,
-			sexo,
-			discapacidad: discapacidad || null,
+			sexo: cleanText(sexo),
+			discapacidad: normalizeNullableText(discapacidad),
 		};
 
 		if (aulaId !== null) {
@@ -417,14 +474,22 @@ export async function updateStudent(id, studentData) {
  */
 export async function updateApoderado(id, apoderadoData) {
 	try {
+		if (apoderadoData.dni) {
+			assertValidDni(apoderadoData.dni, 'DNI del apoderado');
+		}
+		assertValidBirthDate(
+			apoderadoData.fecha_nacimiento,
+			'Fecha de nacimiento del apoderado'
+		);
+
 		const {error} = await supabase
 			.from('apoderados')
 			.update({
-				nombres: apoderadoData.nombres,
-				apellidos: apoderadoData.apellidos,
-				dni: apoderadoData.dni || null,
+				nombres: cleanText(apoderadoData.nombres),
+				apellidos: cleanText(apoderadoData.apellidos),
+				dni: normalizeNullableText(apoderadoData.dni),
 				fecha_nacimiento: apoderadoData.fecha_nacimiento || null,
-				celular: apoderadoData.celular || null,
+				celular: normalizeNullableText(apoderadoData.celular),
 			})
 			.eq('id', id);
 
@@ -445,10 +510,10 @@ export async function updateDireccion(id, direccionData) {
 		const {error} = await supabase
 			.from('direcciones')
 			.update({
-				departamento: direccionData.departamento || null,
-				provincia: direccionData.provincia || null,
-				distrito: direccionData.distrito || null,
-				domicilio: direccionData.domicilio || null,
+				departamento: normalizeNullableText(direccionData.departamento),
+				provincia: normalizeNullableText(direccionData.provincia),
+				distrito: normalizeNullableText(direccionData.distrito),
+				domicilio: normalizeNullableText(direccionData.domicilio),
 			})
 			.eq('id', id);
 
@@ -466,6 +531,16 @@ export async function updateDireccion(id, direccionData) {
  */
 export async function deleteStudent(id) {
 	try {
+		const {error: rpcError} = await supabase.rpc('soft_delete_student', {
+			p_student_id: id,
+		});
+
+		if (!rpcError) {
+			return {message: 'Estudiante eliminado exitosamente'};
+		}
+
+		console.warn('RPC soft_delete_student no disponible, usando fallback:', rpcError.message);
+
 		// Primero obtener los IDs relacionados
 		const {data: student, error: getError} = await supabase
 			.from('estudiantes')

@@ -32,7 +32,7 @@ export function PageHeader({
 							event.target.style.display = 'none';
 						}}
 					/>
-					<div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+					<div className="header-title-group">
 						<span className="logo-icon material-icons">{icon}</span>
 						<h1 className="app-title">{title}</h1>
 					</div>
@@ -126,7 +126,7 @@ export function MobileDrawer({
 				onClick={(event) => event.stopPropagation()}
 			>
 				<div className="mobile-drawer-header">
-					<h3 style={{margin: 0, fontSize: '18px', fontWeight: '600'}}>Menú</h3>
+					<h3 className="mobile-drawer-title">Menú</h3>
 					<button onClick={onClose} className="mobile-drawer-close">
 						<span className="material-icons">close</span>
 					</button>
@@ -139,7 +139,7 @@ export function MobileDrawer({
 							<div className="mobile-user-name">{user?.full_name || 'Usuario'}</div>
 							<div className="mobile-user-email">{user?.email}</div>
 							<div className="mobile-user-role">
-								<span className="material-icons" style={{fontSize: '14px'}}>
+								<span className="material-icons mobile-user-role-icon">
 									badge
 								</span>
 								{user?.role
@@ -167,7 +167,7 @@ export function MobileDrawer({
 
 					<div className="mobile-menu-divider"></div>
 
-					<div style={{fontSize: '13px', color: '#757575', textAlign: 'center'}}>
+					<div className="mobile-total-text">
 						{totalLabel}: {totalValue}
 					</div>
 				</div>
@@ -188,88 +188,22 @@ export function LogoutConfirmModal({show, isLoggingOut, onCancel, onConfirm}) {
 
 	return (
 		<div className="modal-overlay show">
-			<div
-				className="modal"
-				style={{maxWidth: '400px', borderRadius: '12px', overflow: 'hidden'}}
-			>
-				<div style={{padding: '48px 32px 40px', textAlign: 'center'}}>
-					<p
-						style={{
-							fontSize: '19px',
-							fontWeight: '500',
-							color: '#212121',
-							margin: '0',
-							letterSpacing: '-0.4px',
-							lineHeight: '1.4',
-						}}
-					>
-						¿Cerrar sesión?
-					</p>
+			<div className="modal logout-modal">
+				<div className="logout-modal-body">
+					<p className="logout-modal-question">¿Cerrar sesión?</p>
 				</div>
-				<div
-					style={{
-						padding: '0 32px 40px',
-						display: 'flex',
-						gap: '20px',
-						justifyContent: 'center',
-						borderTop: 'none',
-					}}
-				>
+				<div className="logout-modal-actions">
 					<button
 						onClick={onCancel}
-						style={{
-							minWidth: '120px',
-							padding: '14px 32px',
-							border: 'none',
-							background: '#f5f5f5',
-							borderRadius: '8px',
-							cursor: 'pointer',
-							fontSize: '15px',
-							fontWeight: '500',
-							color: '#424242',
-							transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-							userSelect: 'none',
-						}}
-						onMouseEnter={(event) => {
-							event.currentTarget.style.background = '#eeeeee';
-						}}
-						onMouseLeave={(event) => {
-							event.currentTarget.style.background = '#f5f5f5';
-						}}
+						className="logout-cancel-btn"
 						disabled={isLoggingOut}
 					>
 						Cancelar
 					</button>
 					<button
 						onClick={onConfirm}
-						style={{
-							minWidth: '120px',
-							padding: '14px 32px',
-							border: 'none',
-							background: '#d32f2f',
-							borderRadius: '8px',
-							cursor: isLoggingOut ? 'not-allowed' : 'pointer',
-							fontSize: '15px',
-							fontWeight: '600',
-							color: 'white',
-							transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-							opacity: isLoggingOut ? 0.7 : 1,
-							letterSpacing: '0.3px',
-							userSelect: 'none',
-						}}
-						onMouseEnter={(event) => {
-							if (!isLoggingOut) {
-								event.currentTarget.style.background = '#b71c1c';
-								event.currentTarget.style.boxShadow =
-									'0 6px 16px rgba(211, 47, 47, 0.25)';
-								event.currentTarget.style.transform = 'translateY(-1px)';
-							}
-						}}
-						onMouseLeave={(event) => {
-							event.currentTarget.style.background = '#d32f2f';
-							event.currentTarget.style.boxShadow = 'none';
-							event.currentTarget.style.transform = 'translateY(0)';
-						}}
+						className="logout-confirm-btn"
+						aria-busy={isLoggingOut}
 						disabled={isLoggingOut}
 					>
 						{isLoggingOut ? 'Cerrando...' : 'Cerrar sesión'}

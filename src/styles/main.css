@@ -58,6 +58,13 @@ body {
 	-moz-osx-font-smoothing: grayscale;
 }
 
+.auth-loading-screen {
+	min-height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
 .app-container {
 	min-height: 100vh;
 	display: flex;
@@ -87,6 +94,12 @@ body {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-md);
+}
+
+.header-title-group {
+	display: flex;
+	align-items: center;
+	gap: 12px;
 }
 
 .logo-icon {
@@ -1776,6 +1789,12 @@ body {
 	background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
 }
 
+.mobile-drawer-title {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+}
+
 .mobile-drawer-close {
 	background: none;
 	border: none;
@@ -1868,10 +1887,89 @@ body {
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.mobile-user-role-icon {
+	font-size: 14px;
+}
+
 .mobile-menu-divider {
 	height: 1px;
 	background: #e0e0e0;
 	margin: var(--spacing-md) 0;
+}
+
+.mobile-total-text {
+	font-size: 13px;
+	color: #757575;
+	text-align: center;
+}
+
+.logout-modal {
+	max-width: 400px;
+	border-radius: 12px;
+	overflow: hidden;
+}
+
+.logout-modal-body {
+	padding: 48px 32px 40px;
+	text-align: center;
+}
+
+.logout-modal-question {
+	font-size: 19px;
+	font-weight: 500;
+	color: #212121;
+	margin: 0;
+	letter-spacing: -0.4px;
+	line-height: 1.4;
+}
+
+.logout-modal-actions {
+	padding: 0 32px 40px;
+	display: flex;
+	gap: 20px;
+	justify-content: center;
+	border-top: none;
+}
+
+.logout-cancel-btn,
+.logout-confirm-btn {
+	min-width: 120px;
+	padding: 14px 32px;
+	border: none;
+	border-radius: 8px;
+	font-size: 15px;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	user-select: none;
+}
+
+.logout-cancel-btn {
+	background: #f5f5f5;
+	font-weight: 500;
+	color: #424242;
+	cursor: pointer;
+}
+
+.logout-cancel-btn:hover:not(:disabled) {
+	background: #eeeeee;
+}
+
+.logout-confirm-btn {
+	background: #d32f2f;
+	font-weight: 600;
+	color: white;
+	letter-spacing: 0.3px;
+	cursor: pointer;
+}
+
+.logout-confirm-btn:hover:not(:disabled) {
+	background: #b71c1c;
+	box-shadow: 0 6px 16px rgba(211, 47, 47, 0.25);
+	transform: translateY(-1px);
+}
+
+.logout-confirm-btn:disabled {
+	opacity: 0.7;
+	cursor: not-allowed;
 }
 
 .mobile-drawer-footer {

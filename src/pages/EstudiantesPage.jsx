@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React from 'react';
 import {useNavigate, useLocation} from 'react-router-dom';
 import {useAuth} from '../hooks/useAuth';
 import {StudentCard} from '../components/StudentCard';
@@ -11,7 +11,7 @@ import {Notification, LoadingSpinner} from '../components/Common';
 import {useNotification} from '../hooks/useNotification';
 import {usePageShell} from '../hooks/usePageShell';
 import {useStudentsPage} from '../hooks/useStudentsPage';
-import {supabase} from '../lib/supabase';
+import {useSessionGuard} from '../hooks/useSessionGuard';
 
 export function EstudiantesPage() {
 	const navigate = useNavigate();
@@ -41,29 +41,7 @@ export function EstudiantesPage() {
 	} = useStudentsPage({notifySuccess, notifyError});
 	const pageShell = usePageShell({user, logout, navigate});
 
-	// Verificar autenticación periódicamente
-	useEffect(() => {
-		const verifyAuthentication = async () => {
-			try {
-				const {data, error} = await supabase.auth.getUser();
-
-				if (error || !data?.user) {
-					console.warn('Usuario no autenticado, cerrando sesión automáticamente');
-					await logout();
-					navigate('/login');
-				}
-			} catch (error) {
-				console.error('Error verificando autenticación:', error);
-				await logout();
-				navigate('/login');
-			}
-		};
-
-		const interval = setInterval(verifyAuthentication, 60000);
-		verifyAuthentication();
-
-		return () => clearInterval(interval);
-	}, [navigate, logout]);
+	useSessionGuard({logout, navigate});
 
 	const mainStat = stats?.totalStudents ?? pagination.total ?? 0;
 	const sexStats = [

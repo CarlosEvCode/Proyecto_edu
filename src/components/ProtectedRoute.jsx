@@ -8,14 +8,7 @@ export function ProtectedRoute({children}) {
 
 	if (isLoading) {
 		return (
-			<div
-				style={{
-					minHeight: '100vh',
-					display: 'flex',
-					justifyContent: 'center',
-					alignItems: 'center',
-				}}
-			>
+			<div className="auth-loading-screen">
 				<LoadingSpinner />
 			</div>
 		);

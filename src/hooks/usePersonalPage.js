@@ -231,12 +231,31 @@ export function usePersonalPage({notifySuccess, notifyError}) {
 						: null,
 					fecha_inicio_ejercicio_general:
 						formData.fecha_inicio_ejercicio_general || null,
+					plaza:
+						formData.plaza_codigo || formData.cargo_id
+							? {
+								codigo_plaza: formData.plaza_codigo || null,
+								cargo_id: formData.cargo_id || null,
+								especialidad_id: formData.especialidad_id || null,
+								nivel_educativo_id: formData.nivel_educativo_id || null,
+								escala_magisterial_id: formData.escala_magisterial_id || null,
+								condicion_id: formData.condicion_id || null,
+								resolucion_nombramiento:
+									formData.resolucion_nombramiento || null,
+								fecha_nombramiento_carrera:
+									formData.fecha_nombramiento_carrera || null,
+								fecha_ingreso_institucion:
+									formData.fecha_ingreso_institucion || null,
+								jornada_laboral: formData.jornada_laboral || null,
+								remuneracion_bruta: formData.remuneracion_bruta || null,
+							}
+							: null,
 				};
 
 				const personalResult = await api.createPersonal(personalData);
 				const dniDocente = personalResult.dni || formData.dni;
 
-				if (formData.plaza_codigo || formData.cargo_id) {
+				if (!personalResult.usedRpc && (formData.plaza_codigo || formData.cargo_id)) {
 					const plazaData = {
 						dni_personal_asignado: dniDocente,
 						codigo_plaza: formData.plaza_codigo || `PLAZA-${Date.now()}`,
