@@ -1,0 +1,656 @@
+/**
+ * Servicios API - Estudiantes
+ * Llamadas directas a Supabase para gestión de estudiantes
+ */
+
+import {supabase} from '../lib/supabase';
+
+/**
+ * Estudiantes - GET todos con paginación
+ */
+export async function getStudents(page = 1, limit = 24) {
+	try {
+		const offset = (page - 1) * limit;
+
+		// Contar total de estudiantes
+		const {count, error: countError} = await supabase
+			.from('estudiantes')
+			.select('*', {count: 'exact', head: true});
+
+		if (countError) throw countError;
+
+		const total = count || 0;
+		const totalPages = Math.ceil(total / limit);
+
+		// Obtener estudiantes con relaciones
+		const {data, error} = await supabase
+			.from('estudiantes')
+			.select(`
+				id,
+				apellidos,
+				nombres,
+				dni,
+				fecha_nacimiento,
+				sexo,
+				discapacidad,
+				aula_id,
+				apoderado_id,
+				direccion_id,
+				aulas (
+					id,
+					grado,
+					seccion,
+					anio,
+					nivel_id,
+					niveles (
+						id,
+						nombre
+					)
+				),
+				apoderados (
+					id,
+					apellidos,
+					nombres,
+					dni,
+					fecha_nacimiento,
+					celular
+				),
+				direcciones (
+					id,
+					departamento,
+					provincia,
+					distrito,
+					domicilio
+				)
+			`)
+			.order('aulas(grado)', {ascending: true})
+			.order('aulas(seccion)', {ascending: true})
+			.order('apellidos', {ascending: true})
+			.range(offset, offset + limit - 1);
+
+		if (error) throw error;
+
+		// Mapear datos al formato esperado por los componentes
+		const students = mapStudentsData(data || []);
+
+		return {
+			students,
+			pagination: {
+				page,
+				limit,
+				total,
+				totalPages,
+				hasNext: page < totalPages,
+				hasPrev: page > 1,
+			},
+		};
+	} catch (error) {
+		console.error('Error al obtener estudiantes:', error);
+		throw new Error(error.message || 'Error al obtener estudiantes');
+	}
+}
+
+/**
+ * Estudiantes - GET por ID
+ */
+export async function getStudentById(id) {
+	try {
+		const {data, error} = await supabase
+			.from('estudiantes')
+			.select(`
+				id,
+				apellidos,
+				nombres,
+				dni,
+				fecha_nacimiento,
+				sexo,
+				discapacidad,
+				aula_id,
+				apoderado_id,
+				direccion_id,
+				aulas (
+					id,
+					grado,
+					seccion,
+					anio,
+					nivel_id,
+					niveles (
+						id,
+						nombre
+					)
+				),
+				apoderados (
+					id,
+					apellidos,
+					nombres,
+					dni,
+					fecha_nacimiento,
+					celular
+				),
+				direcciones (
+					id,
+					departamento,
+					provincia,
+					distrito,
+					domicilio
+				)
+			`)
+			.eq('id', id)
+			.single();
+
+		if (error) {
+			if (error.code === 'PGRST116') {
+				throw new Error('Estudiante no encontrado');
+			}
+			throw error;
+		}
+
+		return mapStudentData(data);
+	} catch (error) {
+		console.error('Error al obtener estudiante:', error);
+		throw new Error(error.message || 'Error al obtener estudiante');
+	}
+}
+
+/**
+ * Búsqueda de estudiantes con filtros
+ */
+export async function searchStudents(filters = {}, page = 1, limit = 24) {
+	try {
+		const offset = (page - 1) * limit;
+		const {search = '', grado = '', seccion = '', sexo = '', searchType = 'general'} = filters;
+
+		// Construir query base
+		let query = supabase
+			.from('estudiantes')
+			.select(`
+				id,
+				apellidos,
+				nombres,
+				dni,
+				fecha_nacimiento,
+				sexo,
+				discapacidad,
+				aula_id,
+				apoderado_id,
+				direccion_id,
+				aulas (
+					id,
+					grado,
+					seccion,
+					anio,
+					nivel_id,
+					niveles (
+						id,
+						nombre
+					)
+				),
+				apoderados (
+					id,
+					apellidos,
+					nombres,
+					dni,
+					fecha_nacimiento,
+					celular
+				),
+				direcciones (
+					id,
+					departamento,
+					provincia,
+					distrito,
+					domicilio
+				)
+			`, {count: 'exact'});
+
+		// Aplicar filtros de búsqueda por texto
+		if (search) {
+			if (searchType === 'students') {
+				query = query.or(`nombres.ilike.%${search}%,apellidos.ilike.%${search}%,dni.ilike.%${search}%`);
+			} else if (searchType === 'guardians') {
+				// Para búsqueda de apoderado, necesitamos hacer join
+				query = query.or(`apoderados.nombres.ilike.%${search}%,apoderados.apellidos.ilike.%${search}%,apoderados.dni.ilike.%${search}%`);
+			} else if (searchType === 'dni') {
+				query = query.or(`dni.ilike.%${search}%`);
+			} else {
+				// Búsqueda general
+				query = query.or(`nombres.ilike.%${search}%,apellidos.ilike.%${search}%,dni.ilike.%${search}%`);
+			}
+		}
+
+		// Aplicar filtros adicionales
+		if (grado) {
+			query = query.eq('aulas.grado', grado);
+		}
+
+		if (seccion) {
+			query = query.eq('aulas.seccion', seccion);
+		}
+
+		if (sexo) {
+			query = query.eq('sexo', sexo);
+		}
+
+		// Ordenar y paginar
+		const {data, error, count} = await query
+			.order('aulas(grado)', {ascending: true})
+			.order('aulas(seccion)', {ascending: true})
+			.order('apellidos', {ascending: true})
+			.range(offset, offset + limit - 1);
+
+		if (error) throw error;
+
+		const total = count || 0;
+		const totalPages = Math.ceil(total / limit);
+
+		const students = mapStudentsData(data || []);
+
+		return {
+			students,
+			pagination: {
+				page,
+				limit,
+				total,
+				totalPages,
+				hasNext: page < totalPages,
+				hasPrev: page > 1,
+			},
+		};
+	} catch (error) {
+		console.error('Error en búsqueda:', error);
+		throw new Error(error.message || 'Error en la búsqueda');
+	}
+}
+
+/**
+ * Crear nuevo estudiante
+ */
+export async function createStudent(studentData) {
+	try {
+		const {
+			nombres,
+			apellidos,
+			dni,
+			fecha_nacimiento,
+			sexo,
+			discapacidad,
+			grado,
+			seccion,
+			apoderado,
+			direccion,
+		} = studentData;
+
+		// Validar campos requeridos
+		if (!nombres || !apellidos || !dni || !sexo) {
+			throw new Error('Campos obligatorios: nombres, apellidos, dni, sexo');
+		}
+
+		let apoderadoId = null;
+		let direccionId = null;
+		let aulaId = null;
+
+		// Crear dirección si se proporciona
+		if (direccion && (direccion.departamento || direccion.provincia || direccion.distrito || direccion.domicilio)) {
+			const {data: dirData, error: dirError} = await supabase
+				.from('direcciones')
+				.insert([{
+					departamento: direccion.departamento || null,
+					provincia: direccion.provincia || null,
+					distrito: direccion.distrito || null,
+					domicilio: direccion.domicilio || null,
+				}])
+				.select()
+				.single();
+
+			if (dirError) throw dirError;
+			direccionId = dirData.id;
+		}
+
+		// Crear apoderado si se proporciona
+		if (apoderado && (apoderado.nombres || apoderado.apellidos)) {
+			const {data: apoData, error: apoError} = await supabase
+				.from('apoderados')
+				.insert([{
+					nombres: apoderado.nombres || null,
+					apellidos: apoderado.apellidos || null,
+					dni: apoderado.dni || null,
+					fecha_nacimiento: apoderado.fecha_nacimiento || null,
+					celular: apoderado.celular || null,
+				}])
+				.select()
+				.single();
+
+			if (apoError) throw apoError;
+			apoderadoId = apoData.id;
+		}
+
+		// Obtener aula_id si se proporciona grado y sección
+		if (grado || seccion) {
+			aulaId = await getAulaIdByGradoSeccion(grado, seccion);
+		}
+
+		// Crear estudiante
+		const {data, error} = await supabase
+			.from('estudiantes')
+			.insert([{
+				nombres,
+				apellidos,
+				dni,
+				fecha_nacimiento: fecha_nacimiento || null,
+				sexo,
+				discapacidad: discapacidad || null,
+				aula_id: aulaId,
+				apoderado_id: apoderadoId,
+				direccion_id: direccionId,
+			}])
+			.select()
+			.single();
+
+		if (error) {
+			if (error.message.includes('unique') || error.message.includes('duplicate')) {
+				throw new Error('Ya existe un estudiante con este DNI');
+			}
+			throw error;
+		}
+
+		return {
+			message: 'Estudiante creado exitosamente',
+			studentId: data.id,
+		};
+	} catch (error) {
+		console.error('Error al crear estudiante:', error);
+		throw new Error(error.message || 'Error al crear estudiante');
+	}
+}
+
+/**
+ * Actualizar estudiante
+ */
+export async function updateStudent(id, studentData) {
+	try {
+		const {
+			nombres,
+			apellidos,
+			dni,
+			fecha_nacimiento,
+			sexo,
+			discapacidad,
+			grado,
+			seccion,
+		} = studentData;
+
+		let aulaId = null;
+
+		// Obtener aula_id si se proporciona grado y sección
+		if (grado || seccion) {
+			aulaId = await getAulaIdByGradoSeccion(grado, seccion);
+		}
+
+		const updateData = {
+			nombres,
+			apellidos,
+			dni,
+			fecha_nacimiento: fecha_nacimiento || null,
+			sexo,
+			discapacidad: discapacidad || null,
+		};
+
+		if (aulaId !== null) {
+			updateData.aula_id = aulaId;
+		}
+
+		const {error} = await supabase
+			.from('estudiantes')
+			.update(updateData)
+			.eq('id', id);
+
+		if (error) throw error;
+
+		return {message: 'Estudiante actualizado exitosamente'};
+	} catch (error) {
+		console.error('Error al actualizar estudiante:', error);
+		throw new Error(error.message || 'Error al actualizar estudiante');
+	}
+}
+
+/**
+ * Actualizar apoderado
+ */
+export async function updateApoderado(id, apoderadoData) {
+	try {
+		const {error} = await supabase
+			.from('apoderados')
+			.update({
+				nombres: apoderadoData.nombres,
+				apellidos: apoderadoData.apellidos,
+				dni: apoderadoData.dni || null,
+				fecha_nacimiento: apoderadoData.fecha_nacimiento || null,
+				celular: apoderadoData.celular || null,
+			})
+			.eq('id', id);
+
+		if (error) throw error;
+
+		return {message: 'Apoderado actualizado exitosamente'};
+	} catch (error) {
+		console.error('Error al actualizar apoderado:', error);
+		throw new Error(error.message || 'Error al actualizar apoderado');
+	}
+}
+
+/**
+ * Actualizar dirección
+ */
+export async function updateDireccion(id, direccionData) {
+	try {
+		const {error} = await supabase
+			.from('direcciones')
+			.update({
+				departamento: direccionData.departamento || null,
+				provincia: direccionData.provincia || null,
+				distrito: direccionData.distrito || null,
+				domicilio: direccionData.domicilio || null,
+			})
+			.eq('id', id);
+
+		if (error) throw error;
+
+		return {message: 'Dirección actualizada exitosamente'};
+	} catch (error) {
+		console.error('Error al actualizar dirección:', error);
+		throw new Error(error.message || 'Error al actualizar dirección');
+	}
+}
+
+/**
+ * Eliminar estudiante
+ */
+export async function deleteStudent(id) {
+	try {
+		// Primero obtener los IDs relacionados
+		const {data: student, error: getError} = await supabase
+			.from('estudiantes')
+			.select('apoderado_id, direccion_id')
+			.eq('id', id)
+			.single();
+
+		if (getError) throw getError;
+
+		// Eliminar estudiante
+		const {error: deleteError} = await supabase
+			.from('estudiantes')
+			.delete()
+			.eq('id', id);
+
+		if (deleteError) throw deleteError;
+
+		// Eliminar apoderado si existe
+		if (student.apoderado_id) {
+			await supabase
+				.from('apoderados')
+				.delete()
+				.eq('id', student.apoderado_id);
+		}
+
+		// Eliminar dirección si existe
+		if (student.direccion_id) {
+			await supabase
+				.from('direcciones')
+				.delete()
+				.eq('id', student.direccion_id);
+		}
+
+		return {message: 'Estudiante eliminado exitosamente'};
+	} catch (error) {
+		console.error('Error al eliminar estudiante:', error);
+		throw new Error(error.message || 'Error al eliminar estudiante');
+	}
+}
+
+/**
+ * Obtener grados disponibles
+ */
+export async function getGrados() {
+	try {
+		const {data, error} = await supabase
+			.from('aulas')
+			.select('grado')
+			.order('grado', {ascending: true});
+
+		if (error) throw error;
+
+		// Obtener valores únicos
+		const uniqueGrados = [...new Set(data.map(d => d.grado))];
+		return uniqueGrados.map(grado => ({grado}));
+	} catch (error) {
+		console.error('Error al obtener grados:', error);
+		throw new Error(error.message || 'Error al obtener grados');
+	}
+}
+
+/**
+ * Obtener secciones disponibles
+ */
+export async function getSecciones() {
+	try {
+		const {data, error} = await supabase
+			.from('aulas')
+			.select('seccion')
+			.order('seccion', {ascending: true});
+
+		if (error) throw error;
+
+		// Obtener valores únicos
+		const uniqueSecciones = [...new Set(data.map(d => d.seccion))];
+		return uniqueSecciones.map(seccion => ({seccion}));
+	} catch (error) {
+		console.error('Error al obtener secciones:', error);
+		throw new Error(error.message || 'Error al obtener secciones');
+	}
+}
+
+/**
+ * Obtener estadísticas de estudiantes
+ */
+export async function getStudentStats() {
+	try {
+		// Total de estudiantes
+		const {count: totalStudents} = await supabase
+			.from('estudiantes')
+			.select('*', {count: 'exact', head: true});
+
+		// Estudiantes por sexo
+		const {data: bySex} = await supabase
+			.from('estudiantes')
+			.select('sexo');
+
+		const sexCounts = {};
+		(bySex || []).forEach(s => {
+			sexCounts[s.sexo] = (sexCounts[s.sexo] || 0) + 1;
+		});
+
+		// Estudiantes por grado
+		const {data: byGrade} = await supabase
+			.from('estudiantes')
+			.select('aula_id, aulas(grado)');
+
+		const gradeCounts = {};
+		(byGrade || []).forEach((row) => {
+			const grado = row.aulas?.grado;
+			if (grado) gradeCounts[grado] = (gradeCounts[grado] || 0) + 1;
+		});
+
+		return {
+			totalStudents: totalStudents || 0,
+			bySex: sexCounts,
+			byGrade: Object.entries(gradeCounts).map(([grado, count]) => ({
+				grado,
+				count,
+			})),
+		};
+	} catch (error) {
+		console.error('Error al obtener estadísticas:', error);
+		throw new Error(error.message || 'Error al obtener estadísticas');
+	}
+}
+
+// ============================================
+// FUNCIONES HELPER PARA MAPEAR DATOS
+// ============================================
+
+function mapStudentsData(data) {
+	return data.map(mapStudentData);
+}
+
+function mapStudentData(row) {
+	return {
+		id: row.id,
+		apellidos: row.apellidos,
+		nombres: row.nombres,
+		dni: row.dni,
+		fecha_nacimiento: row.fecha_nacimiento,
+		sexo: row.sexo,
+		discapacidad: row.discapacidad,
+		grado: row.aulas?.grado || null,
+		seccion: row.aulas?.seccion || null,
+		anio: row.aulas?.anio || null,
+		nivel: row.aulas?.niveles?.nombre || null,
+		aula_id: row.aula_id,
+		apoderado: row.apoderados ? {
+			id: row.apoderados.id,
+			apellidos: row.apoderados.apellidos,
+			nombres: row.apoderados.nombres,
+			dni: row.apoderados.dni,
+			fecha_nacimiento: row.apoderados.fecha_nacimiento,
+			celular: row.apoderados.celular,
+		} : null,
+		direccion: row.direcciones ? {
+			id: row.direcciones.id,
+			departamento: row.direcciones.departamento,
+			provincia: row.direcciones.provincia,
+			distrito: row.direcciones.distrito,
+			domicilio: row.direcciones.domicilio,
+		} : null,
+	};
+}
+
+async function getAulaIdByGradoSeccion(grado, seccion) {
+	if (!grado || !seccion) {
+		throw new Error('Grado y sección son requeridos');
+	}
+
+	const {data, error} = await supabase
+		.from('aulas')
+		.select('id')
+		.eq('grado', grado)
+		.eq('seccion', seccion)
+		.single();
+
+	if (error) {
+		if (error.code === 'PGRST116') {
+			throw new Error('Combinación de grado y sección no válida');
+		}
+		throw error;
+	}
+
+	return data.id;
+}

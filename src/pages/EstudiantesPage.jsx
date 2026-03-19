@@ -1,55 +1,48 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {useNavigate, Link, useLocation} from 'react-router-dom';
 import {useAuth} from '../hooks/useAuth';
-import {usePersonalContext} from '../context/PersonalContext';
+import {useStudentContext} from '../context/StudentContext';
 import {useCache, useRequestController} from '../hooks/useCache';
-import {PersonalCard} from '../components/PersonalCard';
-import {SearchAndFiltersPersonal} from '../components/SearchAndFiltersPersonal';
+import {StudentCard} from '../components/StudentCard';
+import {SearchAndFilters} from '../components/SearchAndFilters';
 import {Pagination} from '../components/Pagination';
-import {PersonalDetailModal} from '../components/PersonalDetailModal';
-import {AddPersonalModal} from '../components/AddPersonalModal';
+import {StudentDetailModal} from '../components/StudentDetailModal';
+import {AddStudentModal} from '../components/AddStudentModal';
 import {Notification, LoadingSpinner} from '../components/Common';
-import * as api from '../services/api';
+import * as studentsApi from '../services/studentsApi';
 import {supabase} from '../lib/supabase';
 
-export function PersonalPage() {
+export function EstudiantesPage() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const {user, logout} = useAuth();
 	const {
-		personal,
-		setPersonal,
-		cargos,
-		setCargos,
-		especialidades,
-		setEspecialidades,
-		nivelEducativo,
-		setNivelEducativo,
-		escalasMagisteriales,
-		setEscalasMagisteriales,
-		condiciones,
-		setCondiciones,
-		sistemasPensiones,
-		setSistemasPensiones,
+		students,
+		setStudents,
+		grados,
+		setGrados,
+		secciones,
+		setSecciones,
 		pagination,
 		updatePagination,
 		filters,
 		setIsLoading,
 		isLoading,
-	} = usePersonalContext();
+	} = useStudentContext();
 
 	const cache = useCache();
 	const requestController = useRequestController();
 
-	const [selectedPersonal, setSelectedPersonal] = useState(null);
+	const [selectedStudent, setSelectedStudent] = useState(null);
 	const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 	const [notification, setNotification] = useState(null);
-	const [isSavingPersonal, setIsSavingPersonal] = useState(false);
+	const [isSavingStudent, setIsSavingStudent] = useState(false);
 	const [showUserDropdown, setShowUserDropdown] = useState(false);
 	const [showMobileDrawer, setShowMobileDrawer] = useState(false);
 	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 	const [isLoggingOut, setIsLoggingOut] = useState(false);
+	const [stats, setStats] = useState({totalStudents: 0, bySex: {}, byGrade: []});
 
 	// Cerrar dropdown al hacer click fuera
 	useEffect(() => {
@@ -104,9 +97,14 @@ export function PersonalPage() {
 		loadFilterOptions();
 	}, []);
 
-	// Cargar personal cuando cambian los filtros o paginación
+	// Cargar estadísticas una sola vez
 	useEffect(() => {
-		loadPersonal(pagination.page, pagination.limit);
+		loadStats();
+	}, []);
+
+	// Cargar estudiantes cuando cambian los filtros o paginación
+	useEffect(() => {
+		loadStudents(pagination.page, pagination.limit);
 	}, [filters, pagination.page, pagination.limit]);
 
 	const loadFilterOptions = async () => {
@@ -115,30 +113,15 @@ export function PersonalPage() {
 		);
 
 		try {
-			const [
-				cargosData,
-				especialidadesData,
-				nivelesData,
-				escalasData,
-				condicionesData,
-				sistemasData,
-			] = await Promise.all([
-				api.getCargos(),
-				api.getEspecialidades(),
-				api.getNivelesEducativos(),
-				api.getEscalasMagisteriales(),
-				api.getCondiciones(),
-				api.getSistemasPensiones(),
+			const [gradosData, seccionesData] = await Promise.all([
+				studentsApi.getGrados(),
+				studentsApi.getSecciones(),
 			]);
 
 			if (!requestController.isActive(token)) return;
 
-			setCargos(Array.isArray(cargosData) ? cargosData : []);
-			setEspecialidades(Array.isArray(especialidadesData) ? especialidadesData : []);
-			setNivelEducativo(Array.isArray(nivelesData) ? nivelesData : []);
-			setEscalasMagisteriales(Array.isArray(escalasData) ? escalasData : []);
-			setCondiciones(Array.isArray(condicionesData) ? condicionesData : []);
-			setSistemasPensiones(Array.isArray(sistemasData) ? sistemasData : []);
+			setGrados(Array.isArray(gradosData) ? gradosData : []);
+			setSecciones(Array.isArray(seccionesData) ? seccionesData : []);
 		} catch (error) {
 			if (requestController.isActive(token)) {
 				showNotification('Error al cargar opciones de filtro', 'error');
@@ -146,31 +129,55 @@ export function PersonalPage() {
 		}
 	};
 
-	const loadPersonal = async (page = 1, limit = 24) => {
+	const loadStats = async () => {
+		try {
+			const data = await studentsApi.getStudentStats();
+			setStats(data);
+		} catch (error) {
+			// Silencioso: stats no deben bloquear la pagina
+		}
+	};
+
+	const loadStudents = async (page = 1, limit = 24) => {
 		const token = requestController.startRequest(
-			requestController.tokens.personalList
+			requestController.tokens.studentsList
 		);
 
 		try {
 			setIsLoading(true);
 
 			const hasFilters =
-				filters.search || filters.cargo || filters.especialidad || filters.nivel;
+				filters.search || filters.grado || filters.seccion || filters.sexo;
 
 			let data;
+			const cacheKey = cache.getCacheKey('students', {
+				filters,
+				page,
+				limit,
+			});
+
+			const cachedData = cache.get(cacheKey);
+			if (cachedData) {
+				if (!requestController.isActive(token)) return;
+				setStudents(cachedData.students || []);
+				updatePagination(cachedData.pagination);
+				return;
+			}
+
 			if (hasFilters) {
-				data = await api.searchPersonal(filters, page, limit);
+				data = await studentsApi.searchStudents(filters, page, limit);
 			} else {
-				data = await api.getPersonal(page, limit);
+				data = await studentsApi.getStudents(page, limit);
 			}
 
 			if (!requestController.isActive(token)) return;
 
-			setPersonal(data.personal || []);
+			cache.set(cacheKey, data);
+			setStudents(data.students || []);
 			updatePagination(data.pagination);
 		} catch (error) {
 			if (requestController.isActive(token)) {
-				showNotification('Error al cargar personal: ' + error.message, 'error');
+				showNotification('Error al cargar estudiantes: ' + error.message, 'error');
 			}
 		} finally {
 			setIsLoading(false);
@@ -184,157 +191,98 @@ export function PersonalPage() {
 		[updatePagination]
 	);
 
-	const handlePersonalClick = (personalItem) => {
-		setSelectedPersonal(personalItem);
+	const handleStudentClick = (student) => {
+		setSelectedStudent(student);
 		setIsDetailModalOpen(true);
 	};
 
-	const handleSavePersonal = async (updatedPersonal) => {
+	const handleSaveStudent = async (updatedStudent) => {
 		try {
-			setIsSavingPersonal(true);
+			setIsSavingStudent(true);
 
-			const personalData = {
-				nombres: updatedPersonal.nombres,
-				apellidos: updatedPersonal.apellidos,
-				dni: updatedPersonal.dni,
-				fecha_nacimiento: updatedPersonal.fecha_nacimiento || null,
-				numero_celular: updatedPersonal.numero_celular || null,
-				codigo_modular: updatedPersonal.codigo_modular,
-				fecha_inicio_ejercicio_general:
-					updatedPersonal.fecha_inicio_ejercicio_general || null,
-			};
+			// Actualizar estudiante
+			await studentsApi.updateStudent(updatedStudent.id, {
+				nombres: updatedStudent.nombres,
+				apellidos: updatedStudent.apellidos,
+				dni: updatedStudent.dni,
+				fecha_nacimiento: updatedStudent.fecha_nacimiento || null,
+				sexo: updatedStudent.sexo,
+				discapacidad: updatedStudent.discapacidad || null,
+				grado: updatedStudent.grado,
+				seccion: updatedStudent.seccion,
+			});
 
-			await api.updatePersonal(updatedPersonal.dni, personalData);
-
-			// Actualizar campos de plaza si existen
-			if (updatedPersonal.plaza) {
-				const plazaData = {};
-				if (updatedPersonal.plaza.resolucion_nombramiento !== undefined) {
-					plazaData.resolucion_nombramiento =
-						updatedPersonal.plaza.resolucion_nombramiento || null;
-				}
-				if (updatedPersonal.plaza.fecha_nombramiento_carrera !== undefined) {
-					plazaData.fecha_nombramiento_carrera =
-						updatedPersonal.plaza.fecha_nombramiento_carrera || null;
-				}
-				if (updatedPersonal.plaza.fecha_ingreso_institucion !== undefined) {
-					plazaData.fecha_ingreso_institucion =
-						updatedPersonal.plaza.fecha_ingreso_institucion || null;
-				}
-				if (updatedPersonal.plaza.cargo?.id !== undefined) {
-					plazaData.cargo_id = updatedPersonal.plaza.cargo.id || null;
-				}
-				if (updatedPersonal.plaza.especialidad?.id !== undefined) {
-					plazaData.especialidad_id = updatedPersonal.plaza.especialidad.id || null;
-				}
-				if (updatedPersonal.plaza.nivel_educativo?.id !== undefined) {
-					plazaData.nivel_educativo_id = updatedPersonal.plaza.nivel_educativo.id || null;
-				}
-
-				// Solo actualizar si hay campos para actualizar
-				if (Object.keys(plazaData).length > 0) {
-					await api.updatePlaza(updatedPersonal.plaza.codigo_plaza, plazaData);
-				}
+			// Actualizar apoderado si existe
+			if (updatedStudent.apoderado?.id) {
+				await studentsApi.updateApoderado(updatedStudent.apoderado.id, {
+					nombres: updatedStudent.apoderado.nombres,
+					apellidos: updatedStudent.apoderado.apellidos,
+					dni: updatedStudent.apoderado.dni,
+					fecha_nacimiento: updatedStudent.apoderado.fecha_nacimiento,
+					celular: updatedStudent.apoderado.celular,
+				});
 			}
 
-			cache.invalidate('personal');
-			await loadPersonal(pagination.page, pagination.limit);
+			// Actualizar dirección si existe
+			if (updatedStudent.direccion?.id) {
+				await studentsApi.updateDireccion(updatedStudent.direccion.id, {
+					departamento: updatedStudent.direccion.departamento,
+					provincia: updatedStudent.direccion.provincia,
+					distrito: updatedStudent.direccion.distrito,
+					domicilio: updatedStudent.direccion.domicilio,
+				});
+			}
+
+			cache.invalidate('students');
+			await loadStudents(pagination.page, pagination.limit);
+			await loadStats();
 			setIsDetailModalOpen(false);
-			showNotification('Personal actualizado exitosamente', 'success');
+			showNotification('Estudiante actualizado exitosamente', 'success');
 		} catch (error) {
 			showNotification('Error al guardar cambios: ' + error.message, 'error');
 		} finally {
-			setIsSavingPersonal(false);
+			setIsSavingStudent(false);
 		}
 	};
 
-	const handleDeletePersonal = async (dni) => {
+	const handleDeleteStudent = async (id) => {
 		try {
-			setIsSavingPersonal(true);
-			await api.deletePersonal(dni);
-			cache.invalidate('personal');
-			await loadPersonal(pagination.page, pagination.limit);
+			setIsSavingStudent(true);
+			await studentsApi.deleteStudent(id);
+			cache.invalidate('students');
+			await loadStudents(pagination.page, pagination.limit);
+			await loadStats();
 			setIsDetailModalOpen(false);
-			showNotification('Personal eliminado exitosamente', 'success');
+			showNotification('Estudiante eliminado exitosamente', 'success');
 		} catch (error) {
-			showNotification('Error al eliminar personal: ' + error.message, 'error');
+			showNotification('Error al eliminar estudiante: ' + error.message, 'error');
 		} finally {
-			setIsSavingPersonal(false);
+			setIsSavingStudent(false);
 		}
 	};
 
-	const handleAddPersonal = async (formData) => {
+	const handleAddStudent = async (formData) => {
 		try {
-			setIsSavingPersonal(true);
-
-			// Primero crear el personal
-			const personalData = {
-				nombres: formData.nombres,
-				apellidos: formData.apellidos,
-				dni: formData.dni,
-				fecha_nacimiento: formData.fecha_nacimiento || null,
-				numero_celular: formData.numero_celular || null,
-				codigo_modular: formData.codigo_modular,
-				sistema_pensiones_id: formData.sistema_pensiones_id
-					? parseInt(formData.sistema_pensiones_id, 10)
-					: null,
-				fecha_inicio_ejercicio_general: formData.fecha_inicio_ejercicio_general || null,
-			};
-
-			const personalResult = await api.createPersonal(personalData);
-			const dniDocente = personalResult.dni || formData.dni; // Usar el DNI que se envió
-
-			// Luego crear la plaza si se proporciona información
-			if (formData.plaza_codigo || formData.cargo_id) {
-				const plazaData = {
-					dni_personal_asignado: dniDocente,
-					codigo_plaza: formData.plaza_codigo || `PLAZA-${Date.now()}`,
-					cargo_id: formData.cargo_id ? parseInt(formData.cargo_id, 10) : null,
-					especialidad_id: formData.especialidad_id
-						? parseInt(formData.especialidad_id, 10)
-						: null,
-					nivel_educativo_id: formData.nivel_educativo_id
-						? parseInt(formData.nivel_educativo_id, 10)
-						: null,
-					escala_magisterial_id: formData.escala_magisterial_id
-						? parseInt(formData.escala_magisterial_id, 10)
-						: null,
-					condicion_id: formData.condicion_id
-						? parseInt(formData.condicion_id, 10)
-						: null,
-					resolucion_nombramiento: formData.resolucion_nombramiento || null,
-					fecha_nombramiento_carrera: formData.fecha_nombramiento_carrera || null,
-					fecha_ingreso_institucion: formData.fecha_ingreso_institucion || null,
-					jornada_laboral: formData.jornada_laboral
-						? parseInt(formData.jornada_laboral, 10)
-						: null,
-					remuneracion_bruta: formData.remuneracion_bruta
-						? parseFloat(formData.remuneracion_bruta)
-						: null,
-				};
-
-				await api.createPlaza(plazaData);
-			}
-
-			cache.invalidate('personal');
-			await loadPersonal(1, pagination.limit);
+			setIsSavingStudent(true);
+			await studentsApi.createStudent(formData);
+			cache.invalidate('students');
+			await loadStudents(1, pagination.limit);
+			await loadStats();
 			setIsAddModalOpen(false);
-			showNotification('Personal creado exitosamente', 'success');
+			showNotification('Estudiante creado exitosamente', 'success');
 		} catch (error) {
-			showNotification('Error al crear personal: ' + error.message, 'error');
+			showNotification('Error al crear estudiante: ' + error.message, 'error');
 		} finally {
-			setIsSavingPersonal(false);
+			setIsSavingStudent(false);
 		}
 	};
 
 	const handleLogout = async () => {
 		try {
 			setIsLoggingOut(true);
-			const result = await logout();
-
+			await logout();
 			setShowLogoutConfirm(false);
 			setShowUserDropdown(false);
-
 			navigate('/login');
 		} catch (error) {
 			console.error('Error durante logout:', error);
@@ -356,6 +304,22 @@ export function PersonalPage() {
 	};
 
 	const userInitial = getInitial(user?.full_name || user?.email);
+
+	const mainStat = stats?.totalStudents ?? pagination.total ?? 0;
+	const sexStats = [
+		{label: 'Masculino', value: stats?.bySex?.M || 0},
+		{label: 'Femenino', value: stats?.bySex?.F || 0},
+	].filter((item) => item.value > 0);
+	const gradeStats = Array.isArray(stats?.byGrade)
+		? [...stats.byGrade].sort((a, b) => {
+			const aNum = Number.parseInt(a.grado, 10);
+			const bNum = Number.parseInt(b.grado, 10);
+			if (Number.isNaN(aNum) || Number.isNaN(bNum)) {
+				return String(a.grado).localeCompare(String(b.grado));
+			}
+			return aNum - bNum;
+		})
+		: [];
 
 	// Navigation items
 	const navItems = [
@@ -379,8 +343,8 @@ export function PersonalPage() {
 							}}
 						/>
 						<div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-							<span className="logo-icon material-icons">group</span>
-							<h1 className="app-title">Sistema de Personal Docente</h1>
+							<span className="logo-icon material-icons">school</span>
+							<h1 className="app-title">Sistema de Estudiantes</h1>
 						</div>
 					</div>
 
@@ -400,10 +364,10 @@ export function PersonalPage() {
 
 					{/* Estadísticas */}
 					<div className="stats-section">
-						<div className="stat-card">
-							<span className="stat-number">{pagination.total || 0}</span>
-							<span className="stat-label">Personal</span>
-						</div>
+					<div className="stat-card">
+						<span className="stat-number">{mainStat}</span>
+						<span className="stat-label">Estudiantes</span>
+					</div>
 					</div>
 
 					{/* Perfil de usuario */}
@@ -458,6 +422,7 @@ export function PersonalPage() {
 					</div>
 				</div>
 			</header>
+
 			{/* Mobile Drawer */}
 			<div
 				className={`mobile-drawer-overlay ${showMobileDrawer ? 'active' : ''}`}
@@ -516,9 +481,9 @@ export function PersonalPage() {
 
 						<div className="mobile-menu-divider"></div>
 
-						<div style={{fontSize: '13px', color: '#757575', textAlign: 'center'}}>
-							Total de personal: {pagination.total || 0}
-						</div>
+					<div style={{fontSize: '13px', color: '#757575', textAlign: 'center'}}>
+						Total de estudiantes: {mainStat}
+					</div>
 					</div>
 
 					{/* Drawer Footer */}
@@ -536,42 +501,73 @@ export function PersonalPage() {
 					</div>
 				</div>
 			</div>
+
 			{/* Main Content */}
 			<main className="main-content">
+				{(sexStats.length > 0 || gradeStats.length > 0) && (
+					<section className="stats-strip">
+						{sexStats.length > 0 && (
+							<div className="stats-strip-group">
+								<span className="stats-strip-title">Por sexo</span>
+								<div className="stats-strip-items">
+									{sexStats.map((item) => (
+										<div key={item.label} className="stat-chip">
+											<span className="chip-label">{item.label}</span>
+											<span className="chip-value">{item.value}</span>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+						{gradeStats.length > 0 && (
+							<div className="stats-strip-group">
+								<span className="stats-strip-title">Por grado</span>
+								<div className="stats-strip-items">
+									{gradeStats.map((item) => (
+										<div key={item.grado} className="stat-chip">
+											<span className="chip-label">{item.grado}°</span>
+											<span className="chip-value">{item.count}</span>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+					</section>
+				)}
 				{/* Search and Filters */}
 				<div className="search-container">
-					<SearchAndFiltersPersonal
+					<SearchAndFilters
 						onSearch={handleSearch}
-						cargos={cargos}
-						especialidades={especialidades}
-						niveles={nivelEducativo}
+						grados={grados}
+						secciones={secciones}
 					/>
-				</div>{' '}
+				</div>
+
 				{/* Results Container */}
 				<div className="results-container">
 					{/* Results Header */}
 					<div className="results-header">
 						<h2>Resultados</h2>
 						<span className="results-count">
-							{personal.length > 0
-								? `${personal.length} resultado${personal.length !== 1 ? 's' : ''}`
+							{students.length > 0
+								? `${students.length} resultado${students.length !== 1 ? 's' : ''}`
 								: '0 resultados'}
 						</span>
 					</div>
 
-					{/* Personal List */}
-					{isLoading && personal.length === 0 ? (
+					{/* Students List */}
+					{isLoading && students.length === 0 ? (
 						<div className="loading-spinner show">
 							<LoadingSpinner />
 						</div>
-					) : personal.length > 0 ? (
+					) : students.length > 0 ? (
 						<>
 							<div className="results-grid">
-								{personal.map((personalItem) => (
-									<PersonalCard
-										key={personalItem.dni}
-										personal={personalItem}
-										onClick={() => handlePersonalClick(personalItem)}
+								{students.map((student) => (
+									<StudentCard
+										key={student.id}
+										student={student}
+										onClick={() => handleStudentClick(student)}
 									/>
 								))}
 							</div>
@@ -593,40 +589,37 @@ export function PersonalPage() {
 						</div>
 					)}
 				</div>
-				{/* Botón flotante para agregar personal */}
+
+				{/* Botón flotante para agregar estudiante */}
 				<button
 					onClick={() => setIsAddModalOpen(true)}
 					className="fab-btn"
-					title="Agregar nuevo personal"
+					title="Agregar nuevo estudiante"
 				>
 					<span className="material-icons">person_add</span>
 				</button>
 			</main>
+
 			{/* Modals */}
-			<PersonalDetailModal
-				personal={selectedPersonal}
+			<StudentDetailModal
+				student={selectedStudent}
 				isOpen={isDetailModalOpen}
 				onClose={() => setIsDetailModalOpen(false)}
-				onEdit={handleSavePersonal}
-				onDelete={handleDeletePersonal}
-				cargos={cargos}
-				especialidades={especialidades}
-				niveles={nivelEducativo}
-				escalas={escalasMagisteriales}
-				condiciones={condiciones}
+				onEdit={handleSaveStudent}
+				onDelete={handleDeleteStudent}
+				grados={grados}
+				secciones={secciones}
 			/>
-			<AddPersonalModal
+
+			<AddStudentModal
 				isOpen={isAddModalOpen}
 				onClose={() => setIsAddModalOpen(false)}
-				onSave={handleAddPersonal}
-				cargos={cargos}
-				especialidades={especialidades}
-				niveles={nivelEducativo}
-				escalas={escalasMagisteriales}
-				condiciones={condiciones}
-				sistemas={sistemasPensiones}
-				isLoading={isSavingPersonal}
+				onSave={handleAddStudent}
+				grados={grados}
+				secciones={secciones}
+				isLoading={isSavingStudent}
 			/>
+
 			{/* Notification */}
 			{notification && (
 				<Notification
@@ -635,6 +628,7 @@ export function PersonalPage() {
 					onClose={() => setNotification(null)}
 				/>
 			)}
+
 			{/* Logout Confirmation Modal */}
 			{showLogoutConfirm && (
 				<div className="modal-overlay show">
@@ -726,6 +720,3 @@ export function PersonalPage() {
 		</div>
 	);
 }
-
-// Alias for backwards compatibility
-export const AppPage = PersonalPage;

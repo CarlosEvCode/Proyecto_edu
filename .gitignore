@@ -31,6 +31,18 @@ dist-ssr
 # Entorno virtual de Python
 venv/
 
+# Bases de datos locales
+*.db
+
+# Scripts auxiliares
+*.py
+
+# Exportaciones y datasets locales
+/csv_export/
+
+# Archivos de bloqueo (opcional)
+package-lock.json
+
 # Archivos estáticos HTML en public/ (no son necesarios en producción)
 # Estas páginas antiguas no se usan porque tenemos React Router
 /public/app.html
