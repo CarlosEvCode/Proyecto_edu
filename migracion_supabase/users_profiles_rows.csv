@@ -1,0 +1,7 @@
+id,email,full_name,role,school,created_at,updated_at,is_active
+18236ddd-2641-41c9-83d2-4d35c4c663b5,carlos@gmail.com,Carlos,admin,,2025-10-27 19:58:00.119768,2025-10-27 19:58:00.119768,true
+1f91dc99-5885-4167-9fa9-4cc8df72fefd,admin@gmail.com,admin@gmail.com,admin,,2026-01-08 18:55:24.822438,2026-01-08 18:55:24.822438,true
+3cf3f7fa-d89f-4456-a7dc-b51bcd56f570,mirko@gmail.com,Mirko,admin,,2025-10-28 12:43:54.031009,2025-10-28 12:43:54.031009,true
+3ed3d0d2-91c3-45ba-92e9-0a54e261e974,carlos1@gmail.com,carlos1@gmail.com,admin,,2025-11-25 14:55:36.732036,2025-11-25 14:55:36.732036,true
+46e86a3d-dc1e-48fa-9beb-ad0d46cc3699,controlip@gmail.com,controlip@gmail.com,admin,,2025-12-12 16:15:59.728484,2025-12-12 16:15:59.728484,true
+c68822bc-4a5a-4ee9-ae99-59f8be07b742,pineda@gmail.com,Junior,admin,,2025-10-27 19:51:33.500798,2025-10-27 19:51:33.500798,true

@@ -1,0 +1,6 @@
+role,description
+admin,Acceso total para administración del sistema
+consulta,Solo lectura
+direccion,Gestión académica y administrativa de la institución
+docente,Consulta y gestión limitada para docencia
+secretaria,Gestión operativa y documental
