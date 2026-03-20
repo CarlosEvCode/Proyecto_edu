@@ -1,5 +1,6 @@
 import React from 'react';
 import {Link} from 'react-router-dom';
+import {hasRouteAccess, normalizeRole} from '../utils/permissions';
 
 const NAV_ITEMS = [
 	{path: '/estudiantes', label: 'Estudiantes', icon: 'school'},
@@ -20,6 +21,13 @@ export function PageHeader({
 	onOpenMobileDrawer,
 	onRequestLogout,
 }) {
+	const userRole = normalizeRole(user?.role);
+	const visibleNavItems = NAV_ITEMS.filter((item) => {
+		if (item.path === '/personal') return hasRouteAccess(userRole, 'personal');
+		if (item.path === '/estudiantes') return hasRouteAccess(userRole, 'estudiantes');
+		return false;
+	});
+
 	return (
 		<header className="app-header">
 			<div className="header-content">
@@ -39,7 +47,7 @@ export function PageHeader({
 				</div>
 
 				<nav className="main-nav">
-					{NAV_ITEMS.map((item) => (
+					{visibleNavItems.map((item) => (
 						<Link
 							key={item.path}
 							to={item.path}
@@ -116,6 +124,13 @@ export function MobileDrawer({
 	totalValue,
 	onRequestLogout,
 }) {
+	const userRole = normalizeRole(user?.role);
+	const visibleNavItems = NAV_ITEMS.filter((item) => {
+		if (item.path === '/personal') return hasRouteAccess(userRole, 'personal');
+		if (item.path === '/estudiantes') return hasRouteAccess(userRole, 'estudiantes');
+		return false;
+	});
+
 	return (
 		<div
 			className={`mobile-drawer-overlay ${showMobileDrawer ? 'active' : ''}`}
@@ -152,7 +167,7 @@ export function MobileDrawer({
 					<div className="mobile-menu-divider"></div>
 
 					<div className="mobile-nav-links">
-						{NAV_ITEMS.map((item) => (
+						{visibleNavItems.map((item) => (
 							<Link
 								key={item.path}
 								to={item.path}

@@ -1,19 +1,35 @@
 import React, {useState, useCallback, useEffect} from 'react';
 import {supabase} from '../lib/supabase';
 import {AuthContext} from './auth-context';
+import {normalizeRole} from '../utils/permissions';
 
 export function AuthProvider({children}) {
 	const [user, setUser] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+	const buildSafeUser = useCallback((authUser, profileData = null) => {
+		const profileRole = profileData?.role;
+		const metadataRole = authUser?.user_metadata?.role;
+
+		return {
+			...authUser,
+			full_name:
+				profileData?.full_name ||
+				authUser?.user_metadata?.full_name ||
+				authUser?.email ||
+				'Usuario',
+			role: normalizeRole(profileRole || metadataRole),
+			school: profileData?.school || null,
+		};
+	}, []);
+
 	/**
 	 * Enriquecer usuario con datos de users_profiles (sin timeout)
 	 */
 	const enrichUserWithProfile = useCallback(async (authUser) => {
 		if (!authUser?.id) {
-			console.warn('No hay ID de usuario para enriquecer');
-			return authUser;
+			return buildSafeUser(authUser);
 		}
 
 		try {
@@ -24,29 +40,15 @@ export function AuthProvider({children}) {
 				.single();
 
 			if (error || !data) {
-				console.warn('No se encontraron datos de perfil, usando valores por defecto');
-				return {
-					...authUser,
-					full_name: authUser.user_metadata?.full_name || authUser.email || 'Usuario',
-					role: authUser.user_metadata?.role || 'profesor',
-				};
+				return buildSafeUser(authUser);
 			}
 
-			return {
-				...authUser,
-				full_name: data.full_name || authUser.email || 'Usuario',
-				role: data.role || 'profesor',
-				school: data.school,
-			};
+			return buildSafeUser(authUser, data);
 		} catch (error) {
 			console.error('Error enriqueciendo usuario:', error);
-			return {
-				...authUser,
-				full_name: authUser.user_metadata?.full_name || authUser.email || 'Usuario',
-				role: authUser.user_metadata?.role || 'profesor',
-			};
+			return buildSafeUser(authUser);
 		}
-	}, []);
+	}, [buildSafeUser]);
 
 	// Inicializar y escuchar cambios de autenticación
 	useEffect(() => {
@@ -61,14 +63,7 @@ export function AuthProvider({children}) {
 
 				if (mounted) {
 					if (session?.user) {
-						// NO enriquecer en la inicialización para no bloquear
-						// Solo usar el usuario de autenticación con datos básicos
-						setUser({
-							...session.user,
-							full_name:
-								session.user.user_metadata?.full_name || session.user.email || 'Usuario',
-							role: session.user.user_metadata?.role || 'profesor',
-						});
+						setUser(buildSafeUser(session.user));
 						setIsAuthenticated(true);
 
 						// Enriquecer de forma asincrónica en el fondo
@@ -99,13 +94,7 @@ export function AuthProvider({children}) {
 		} = supabase.auth.onAuthStateChange(async (_event, session) => {
 			if (mounted) {
 				if (session?.user) {
-					// Mostrar datos básicos inmediatamente
-					setUser({
-						...session.user,
-						full_name:
-							session.user.user_metadata?.full_name || session.user.email || 'Usuario',
-						role: session.user.user_metadata?.role || 'profesor',
-					});
+					setUser(buildSafeUser(session.user));
 					setIsAuthenticated(true);
 
 					// Enriquecer de forma asincrónica
@@ -125,7 +114,7 @@ export function AuthProvider({children}) {
 			mounted = false;
 			subscription.unsubscribe();
 		};
-	}, [enrichUserWithProfile]);
+	}, [enrichUserWithProfile, buildSafeUser]);
 
 	/**
 	 * Registrar nuevo usuario con Supabase Auth
