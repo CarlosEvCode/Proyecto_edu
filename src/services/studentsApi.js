@@ -19,17 +19,18 @@ export async function getStudents(page = 1, limit = 24) {
 	try {
 		const offset = (page - 1) * limit;
 
-		// Contar total de estudiantes
+		// Contar total de estudiantes (solo los no eliminados)
 		const {count, error: countError} = await supabase
 			.from('estudiantes')
-			.select('*', {count: 'exact', head: true});
+			.select('*', {count: 'exact', head: true})
+			.is('deleted_at', null);
 
 		if (countError) throw countError;
 
 		const total = count || 0;
 		const totalPages = Math.ceil(total / limit);
 
-		// Obtener estudiantes con relaciones
+		// Obtener estudiantes con relaciones (solo los no eliminados)
 		const {data, error} = await supabase
 			.from('estudiantes')
 			.select(`
@@ -70,6 +71,7 @@ export async function getStudents(page = 1, limit = 24) {
 					domicilio
 				)
 			`)
+			.is('deleted_at', null)
 			.order('aulas(grado)', {ascending: true})
 			.order('aulas(seccion)', {ascending: true})
 			.order('apellidos', {ascending: true})
@@ -207,7 +209,8 @@ export async function searchStudents(filters = {}, page = 1, limit = 24) {
 					distrito,
 					domicilio
 				)
-			`, {count: 'exact'});
+			`, {count: 'exact'})
+			.is('deleted_at', null);
 
 		// Aplicar filtros de búsqueda por texto
 		if (search) {
@@ -702,39 +705,40 @@ export async function getSecciones() {
  */
 export async function getStudentStats() {
 	try {
-		// Total de estudiantes
+		// Total de estudiantes (solo los no eliminados)
 		const {count: totalStudents} = await supabase
 			.from('estudiantes')
-			.select('*', {count: 'exact', head: true});
+			.select('*', {count: 'exact', head: true})
+			.is('deleted_at', null);
 
-		// Estudiantes por sexo
+		// Estudiantes por sexo (solo los no eliminados)
 		const {data: bySex} = await supabase
 			.from('estudiantes')
-			.select('sexo');
+			.select('sexo')
+			.is('deleted_at', null);
 
 		const sexCounts = {};
 		(bySex || []).forEach(s => {
 			sexCounts[s.sexo] = (sexCounts[s.sexo] || 0) + 1;
 		});
 
-		// Estudiantes por grado
-		const {data: byGrade} = await supabase
-			.from('estudiantes')
-			.select('aula_id, aulas(grado)');
+		// Estudiantes por grado - usar RPC para evitar límite de 1000
+		const {data: gradeData, error: gradeError} = await supabase.rpc('get_students_by_grade');
 
-		const gradeCounts = {};
-		(byGrade || []).forEach((row) => {
-			const grado = row.aulas?.grado;
-			if (grado) gradeCounts[grado] = (gradeCounts[grado] || 0) + 1;
-		});
+		if (gradeError) {
+			console.error('Error getting grade stats:', gradeError);
+			throw gradeError;
+		}
+
+		const byGrade = (gradeData || []).map(row => ({
+			grado: row.grado,
+			count: Number(row.cantidad),
+		}));
 
 		return {
 			totalStudents: totalStudents || 0,
 			bySex: sexCounts,
-			byGrade: Object.entries(gradeCounts).map(([grado, count]) => ({
-				grado,
-				count,
-			})),
+			byGrade,
 		};
 	} catch (error) {
 		console.error('Error al obtener estadísticas:', error);
