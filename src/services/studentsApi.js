@@ -424,6 +424,8 @@ export async function updateStudent(id, studentData) {
 			discapacidad,
 			grado,
 			seccion,
+			apoderado,
+			direccion,
 		} = studentData;
 
 		assertRequired(['nombres', 'apellidos', 'dni', 'sexo'], {
@@ -435,34 +437,106 @@ export async function updateStudent(id, studentData) {
 		assertValidDni(dni);
 		assertValidBirthDate(fecha_nacimiento);
 
-		let aulaId = null;
+		// Obtener IDs actuales para saber qué actualizar
+		const {data: currentStudent, error: getError} = await supabase
+			.from('estudiantes')
+			.select('apoderado_id, direccion_id')
+			.eq('id', id)
+			.single();
 
-		// Obtener aula_id si se proporciona grado y sección
-		if (grado || seccion) {
-			aulaId = await getAulaIdByGradoSeccion(grado, seccion);
+		if (getError) throw getError;
+
+		let apoderadoId = currentStudent.apoderado_id;
+		let direccionId = currentStudent.direccion_id;
+
+		// 1. Manejar Apoderado
+		if (apoderado && (apoderado.nombres || apoderado.apellidos || apoderado.dni || apoderado.celular)) {
+			if (apoderado.dni) assertValidDni(apoderado.dni, 'DNI del apoderado');
+			if (apoderado.fecha_nacimiento) assertValidBirthDate(apoderado.fecha_nacimiento, 'Fecha de nacimiento del apoderado');
+
+			const apoPayload = {
+				nombres: cleanText(apoderado.nombres),
+				apellidos: cleanText(apoderado.apellidos),
+				dni: normalizeNullableText(apoderado.dni),
+				fecha_nacimiento: apoderado.fecha_nacimiento || null,
+				celular: normalizeNullableText(apoderado.celular),
+			};
+
+			if (apoderadoId) {
+				const {error: apoError} = await supabase
+					.from('apoderados')
+					.update(apoPayload)
+					.eq('id', apoderadoId);
+				if (apoError) throw apoError;
+			} else {
+				const {data: apoData, error: apoError} = await supabase
+					.from('apoderados')
+					.insert([apoPayload])
+					.select()
+					.single();
+				if (apoError) throw apoError;
+				apoderadoId = apoData.id;
+			}
 		}
 
-		const updateData = {
+		// 2. Manejar Dirección
+		if (direccion && (direccion.departamento || direccion.provincia || direccion.distrito || direccion.domicilio)) {
+			const dirPayload = {
+				departamento: normalizeNullableText(direccion.departamento),
+				provincia: normalizeNullableText(direccion.provincia),
+				distrito: normalizeNullableText(direccion.distrito),
+				domicilio: normalizeNullableText(direccion.domicilio),
+			};
+
+			if (direccionId) {
+				const {error: dirError} = await supabase
+					.from('direcciones')
+					.update(dirPayload)
+					.eq('id', direccionId);
+				if (dirError) throw dirError;
+			} else {
+				const {data: dirData, error: dirError} = await supabase
+					.from('direcciones')
+					.insert([dirPayload])
+					.select()
+					.single();
+				if (dirError) throw dirError;
+				direccionId = dirData.id;
+			}
+		}
+
+		// 3. Manejar Aula
+		let aulaId = undefined; // usar undefined para no sobreescribir si no se toca
+		if (grado && seccion) {
+			aulaId = await getAulaIdByGradoSeccion(grado, seccion);
+		} else if (grado === '' || seccion === '') {
+			aulaId = null; // Caso "Sin Sección"
+		}
+
+		// 4. Actualizar Estudiante
+		const updatePayload = {
 			nombres: cleanText(nombres),
 			apellidos: cleanText(apellidos),
 			dni: cleanText(dni),
 			fecha_nacimiento: fecha_nacimiento || null,
 			sexo: cleanText(sexo),
 			discapacidad: normalizeNullableText(discapacidad),
+			apoderado_id: apoderadoId,
+			direccion_id: direccionId,
 		};
 
-		if (aulaId !== null) {
-			updateData.aula_id = aulaId;
+		if (aulaId !== undefined) {
+			updatePayload.aula_id = aulaId;
 		}
 
 		const {error} = await supabase
 			.from('estudiantes')
-			.update(updateData)
+			.update(updatePayload)
 			.eq('id', id);
 
 		if (error) throw error;
 
-		return {message: 'Estudiante actualizado exitosamente'};
+		return {message: 'Estudiante y datos relacionados actualizados exitosamente'};
 	} catch (error) {
 		console.error('Error al actualizar estudiante:', error);
 		throw new Error(error.message || 'Error al actualizar estudiante');

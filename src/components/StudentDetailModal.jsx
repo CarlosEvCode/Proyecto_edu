@@ -10,337 +10,177 @@ export function StudentDetailModal({
 	secciones = [],
 }) {
 	const [isEditMode, setIsEditMode] = useState(false);
-	const [editedData, setEditedData] = useState(student);
+	const [editedData, setEditedData] = useState(null);
 
 	useEffect(() => {
-		if (student) {
-			setEditedData(student);
+		if (student && isOpen) {
+			setEditedData({
+				...student,
+				apoderado: student.apoderado || {
+					nombres: '',
+					apellidos: '',
+					dni: '',
+					fecha_nacimiento: '',
+					celular: '',
+				},
+				direccion: student.direccion || {
+					departamento: '',
+					provincia: '',
+					distrito: '',
+					domicilio: '',
+				},
+			});
 			setIsEditMode(false);
 		}
 	}, [student, isOpen]);
-
-	const calculateAge = (birthDate) => {
-		if (!birthDate) return 'N/A';
-		const [year, month, day] = birthDate.split('-').map((n) => parseInt(n, 10));
-		const birth = new Date(year, month - 1, day);
-		const today = new Date();
-		let age = today.getFullYear() - birth.getFullYear();
-		const monthDiff = today.getMonth() - birth.getMonth();
-		if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-			age--;
-		}
-		return age;
-	};
 
 	const handleInputChange = (e) => {
 		const {name, value} = e.target;
 		if (name.startsWith('apoderado_')) {
 			const field = name.replace('apoderado_', '');
-			setEditedData((prev) => ({
+			setEditedData(prev => ({
 				...prev,
-				apoderado: {...(prev.apoderado || {}), [field]: value},
+				apoderado: {...prev.apoderado, [field]: value}
 			}));
 		} else if (name.startsWith('direccion_')) {
 			const field = name.replace('direccion_', '');
-			setEditedData((prev) => ({
+			setEditedData(prev => ({
 				...prev,
-				direccion: {...(prev.direccion || {}), [field]: value},
+				direccion: {...prev.direccion, [field]: value}
 			}));
 		} else {
-			setEditedData((prev) => ({...prev, [name]: value}));
+			setEditedData(prev => ({...prev, [name]: value}));
 		}
 	};
 
-	const handleSave = () => {
-		onEdit(editedData);
-		setIsEditMode(false);
-	};
-
-	const handleCancel = () => {
-		setEditedData(student);
-		setIsEditMode(false);
-	};
-
-	const handleClose = () => {
-		if (isEditMode) {
-			if (confirm('¿Descartar cambios?')) {
-				setIsEditMode(false);
-				onClose();
-			}
-		} else {
-			onClose();
+	const handleSave = async () => {
+		try {
+			await onEdit(editedData);
+			setIsEditMode(false);
+		} catch (error) {
+			console.error('Error al guardar:', error);
 		}
 	};
 
 	if (!isOpen || !student || !editedData) return null;
 
-	const age = calculateAge(student.fecha_nacimiento);
-
 	return (
-		<div className={`modal-overlay ${isOpen ? 'show' : ''}`} onClick={handleClose}>
-			<div className="modal" onClick={(e) => e.stopPropagation()}>
+		<div className="modal-overlay show" onClick={() => !isEditMode && onClose()}>
+			<div className="modal" style={{maxWidth: '800px', width: '95%'}} onClick={(e) => e.stopPropagation()}>
 				<div className="modal-header">
-					<h3>
-						{editedData.nombres} {editedData.apellidos}
-					</h3>
-					<button className="modal-close" onClick={handleClose} aria-label="Cerrar modal">
-						×
-					</button>
+					<h3>{isEditMode ? 'Editando Estudiante' : `${editedData.nombres} ${editedData.apellidos}`}</h3>
+					<button className="modal-close" onClick={onClose}>×</button>
 				</div>
 
-				<div className="modal-content">
-					<div className="detail-section">
-						<h4>Información del Estudiante</h4>
-						<div className="detail-grid">
-							<DetailField
-								label="Nombres"
-								value={editedData.nombres}
-								isEditMode={isEditMode}
-								onChange={handleInputChange}
-								name="nombres"
-								required
-							/>
-							<DetailField
-								label="Apellidos"
-								value={editedData.apellidos}
-								isEditMode={isEditMode}
-								onChange={handleInputChange}
-								name="apellidos"
-								required
-							/>
-							<DetailField
-								label="DNI"
-								value={editedData.dni}
-								isEditMode={isEditMode}
-								onChange={handleInputChange}
-								name="dni"
-								required
-							/>
-							<DetailField
-								label="Fecha de Nacimiento"
-								value={editedData.fecha_nacimiento}
-								isEditMode={isEditMode}
-								onChange={handleInputChange}
-								name="fecha_nacimiento"
-								type="date"
-							/>
-							<DetailField label="Edad" value={`${age} años`} isEditMode={false} />
-							<SelectField
-								label="Sexo"
-								value={editedData.sexo}
-								isEditMode={isEditMode}
-								onChange={handleInputChange}
-								name="sexo"
-								options={[
-									{value: 'M', label: 'Masculino'},
-									{value: 'F', label: 'Femenino'},
-								]}
-								required
-							/>
-							<SelectField
-								label="Grado"
-								value={editedData.grado || ''}
-								isEditMode={isEditMode}
-								onChange={handleInputChange}
-								name="grado"
-								options={[
-									{value: '', label: 'Seleccionar...'},
-									...grados.map((g) => ({value: g.grado, label: g.grado})),
-								]}
-							/>
-							<SelectField
-								label="Sección"
-								value={editedData.seccion || ''}
-								isEditMode={isEditMode}
-								onChange={handleInputChange}
-								name="seccion"
-								options={[
-									{value: '', label: 'Seleccionar...'},
-									...secciones.map((s) => ({value: s.seccion, label: s.seccion})),
-								]}
-							/>
-							<DetailField
-								label="Discapacidad"
-								value={editedData.discapacidad}
-								isEditMode={isEditMode}
-								onChange={handleInputChange}
-								name="discapacidad"
-							/>
+				<div className="modal-content" style={{maxHeight: '70vh', overflowY: 'auto', padding: '20px'}}>
+					{/* SECCIÓN ESTUDIANTE */}
+					<div className="detail-section" style={{marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '20px'}}>
+						<h4 style={{color: '#2563eb', marginBottom: '15px'}}>Información del Estudiante</h4>
+						<div className="detail-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px'}}>
+							<div className="detail-field">
+								<label>Nombres *</label>
+								{isEditMode ? <input name="nombres" value={editedData.nombres || ''} onChange={handleInputChange} /> : <span>{editedData.nombres}</span>}
+							</div>
+							<div className="detail-field">
+								<label>Apellidos *</label>
+								{isEditMode ? <input name="apellidos" value={editedData.apellidos || ''} onChange={handleInputChange} /> : <span>{editedData.apellidos}</span>}
+							</div>
+							<div className="detail-field">
+								<label>DNI *</label>
+								{isEditMode ? <input name="dni" value={editedData.dni || ''} onChange={handleInputChange} /> : <span>{editedData.dni}</span>}
+							</div>
+							<div className="detail-field">
+								<label>Sexo</label>
+								{isEditMode ? (
+									<select name="sexo" value={editedData.sexo || ''} onChange={handleInputChange}>
+										<option value="M">Masculino</option>
+										<option value="F">Femenino</option>
+									</select>
+								) : <span>{editedData.sexo === 'M' ? 'Masculino' : 'Femenino'}</span>}
+							</div>
+							<div className="detail-field">
+								<label>Grado</label>
+								{isEditMode ? (
+									<select name="grado" value={editedData.grado || ''} onChange={handleInputChange}>
+										<option value="">Sin Grado</option>
+										{grados.map(g => <option key={g.grado} value={g.grado}>{g.grado}</option>)}
+									</select>
+								) : <span>{editedData.grado || 'N/A'}</span>}
+							</div>
+							<div className="detail-field">
+								<label>Sección</label>
+								{isEditMode ? (
+									<select name="seccion" value={editedData.seccion || ''} onChange={handleInputChange}>
+										<option value="">Sin Sección</option>
+										{secciones.map(s => <option key={s.seccion} value={s.seccion}>{s.seccion}</option>)}
+									</select>
+								) : <span>{editedData.seccion || 'N/A'}</span>}
+							</div>
 						</div>
 					</div>
 
-					{editedData.apoderado && (
-						<div className="detail-section">
-							<h4>Información del Apoderado</h4>
-							<div className="detail-grid">
-								<DetailField
-									label="Nombres"
-									value={editedData.apoderado.nombres}
-									isEditMode={isEditMode}
-									onChange={handleInputChange}
-									name="apoderado_nombres"
-									required
-								/>
-								<DetailField
-									label="Apellidos"
-									value={editedData.apoderado.apellidos}
-									isEditMode={isEditMode}
-									onChange={handleInputChange}
-									name="apoderado_apellidos"
-									required
-								/>
-								<DetailField
-									label="DNI"
-									value={editedData.apoderado.dni}
-									isEditMode={isEditMode}
-									onChange={handleInputChange}
-									name="apoderado_dni"
-								/>
-								<DetailField
-									label="Fecha de Nacimiento"
-									value={editedData.apoderado.fecha_nacimiento}
-									isEditMode={isEditMode}
-									onChange={handleInputChange}
-									name="apoderado_fecha_nacimiento"
-									type="date"
-								/>
-								<DetailField
-									label="Celular"
-									value={editedData.apoderado.celular}
-									isEditMode={isEditMode}
-									onChange={handleInputChange}
-									name="apoderado_celular"
-								/>
+					{/* SECCIÓN APODERADO - SIEMPRE VISIBLE */}
+					<div className="detail-section" style={{marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '20px'}}>
+						<h4 style={{color: '#2563eb', marginBottom: '15px'}}>Información del Apoderado</h4>
+						<div className="detail-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px'}}>
+							<div className="detail-field">
+								<label>Nombres Apoderado</label>
+								{isEditMode ? <input name="apoderado_nombres" value={editedData.apoderado?.nombres || ''} onChange={handleInputChange} /> : <span>{editedData.apoderado?.nombres || 'No registrado'}</span>}
+							</div>
+							<div className="detail-field">
+								<label>Apellidos Apoderado</label>
+								{isEditMode ? <input name="apoderado_apellidos" value={editedData.apoderado?.apellidos || ''} onChange={handleInputChange} /> : <span>{editedData.apoderado?.apellidos || 'No registrado'}</span>}
+							</div>
+							<div className="detail-field">
+								<label>DNI Apoderado</label>
+								{isEditMode ? <input name="apoderado_dni" value={editedData.apoderado?.dni || ''} onChange={handleInputChange} /> : <span>{editedData.apoderado?.dni || 'No registrado'}</span>}
+							</div>
+							<div className="detail-field">
+								<label>Celular</label>
+								{isEditMode ? <input name="apoderado_celular" value={editedData.apoderado?.celular || ''} onChange={handleInputChange} /> : <span>{editedData.apoderado?.celular || 'No registrado'}</span>}
 							</div>
 						</div>
-					)}
+					</div>
 
-					{editedData.direccion && (
-						<div className="detail-section">
-							<h4>Dirección</h4>
-							<div className="detail-grid">
-								<DetailField
-									label="Departamento"
-									value={editedData.direccion.departamento}
-									isEditMode={isEditMode}
-									onChange={handleInputChange}
-									name="direccion_departamento"
-								/>
-								<DetailField
-									label="Provincia"
-									value={editedData.direccion.provincia}
-									isEditMode={isEditMode}
-									onChange={handleInputChange}
-									name="direccion_provincia"
-								/>
-								<DetailField
-									label="Distrito"
-									value={editedData.direccion.distrito}
-									isEditMode={isEditMode}
-									onChange={handleInputChange}
-									name="direccion_distrito"
-								/>
-								<DetailField
-									label="Domicilio"
-									value={editedData.direccion.domicilio}
-									isEditMode={isEditMode}
-									onChange={handleInputChange}
-									name="direccion_domicilio"
-								/>
+					{/* SECCIÓN DIRECCIÓN - SIEMPRE VISIBLE */}
+					<div className="detail-section" style={{marginBottom: '20px'}}>
+						<h4 style={{color: '#2563eb', marginBottom: '15px'}}>Dirección Domiciliaria</h4>
+						<div className="detail-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px'}}>
+							<div className="detail-field">
+								<label>Departamento</label>
+								{isEditMode ? <input name="direccion_departamento" value={editedData.direccion?.departamento || ''} onChange={handleInputChange} /> : <span>{editedData.direccion?.departamento || 'N/A'}</span>}
+							</div>
+							<div className="detail-field">
+								<label>Provincia</label>
+								{isEditMode ? <input name="direccion_provincia" value={editedData.direccion?.provincia || ''} onChange={handleInputChange} /> : <span>{editedData.direccion?.provincia || 'N/A'}</span>}
+							</div>
+							<div className="detail-field">
+								<label>Distrito</label>
+								{isEditMode ? <input name="direccion_distrito" value={editedData.direccion?.distrito || ''} onChange={handleInputChange} /> : <span>{editedData.direccion?.distrito || 'N/A'}</span>}
+							</div>
+							<div className="detail-field">
+								<label>Domicilio</label>
+								{isEditMode ? <input name="direccion_domicilio" value={editedData.direccion?.domicilio || ''} onChange={handleInputChange} style={{gridColumn: 'span 2'}} /> : <span>{editedData.direccion?.domicilio || 'N/A'}</span>}
 							</div>
 						</div>
-					)}
+					</div>
 				</div>
 
-				<div className="modal-footer">
+				<div className="modal-footer" style={{padding: '20px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
 					{!isEditMode ? (
 						<>
-							<button className="edit-toggle-btn" onClick={() => setIsEditMode(true)}>
-								Editar
-							</button>
-							<button
-								className="delete-btn"
-								onClick={() => {
-									if (confirm('¿Estás seguro de eliminar este estudiante?')) {
-										onDelete(student.id);
-									}
-								}}
-							>
-								Eliminar
-							</button>
+							<button className="edit-toggle-btn" onClick={() => setIsEditMode(true)}>Editar Todo</button>
+							<button className="delete-btn" onClick={() => confirm('¿Eliminar?') && onDelete(student.id)}>Eliminar</button>
+							<button className="cancel-btn" onClick={onClose}>Cerrar</button>
 						</>
 					) : (
 						<>
-							<button className="cancel-btn" onClick={handleCancel}>
-								Cancelar
-							</button>
-							<button className="save-btn" onClick={handleSave}>
-								Guardar Cambios
-							</button>
+							<button className="save-btn" onClick={handleSave} style={{backgroundColor: '#2563eb', color: 'white'}}>Guardar Cambios</button>
+							<button className="cancel-btn" onClick={() => setIsEditMode(false)}>Cancelar</button>
 						</>
 					)}
 				</div>
 			</div>
-		</div>
-	);
-}
-
-function DetailField({
-	label,
-	value,
-	isEditMode,
-	onChange,
-	name,
-	type = 'text',
-	required = false,
-}) {
-	return (
-		<div className="detail-field">
-			<label>
-				{label}
-				{required && <span className="field-required">*</span>}
-			</label>
-			{isEditMode ? (
-				<input
-					type={type}
-					name={name}
-					value={value || ''}
-					onChange={onChange}
-					required={required}
-				/>
-			) : (
-				<span>{value || 'N/A'}</span>
-			)}
-		</div>
-	);
-}
-
-function SelectField({
-	label,
-	value,
-	isEditMode,
-	onChange,
-	name,
-	options = [],
-	required = false,
-}) {
-	return (
-		<div className="detail-field">
-			<label>
-				{label}
-				{required && <span className="field-required">*</span>}
-			</label>
-			{isEditMode ? (
-				<select name={name} value={value || ''} onChange={onChange} required={required}>
-					{options.map((opt) => (
-						<option key={opt.value} value={opt.value}>
-							{opt.label}
-						</option>
-					))}
-				</select>
-			) : (
-				<span>{options.find((o) => o.value === value)?.label || value || 'N/A'}</span>
-			)}
 		</div>
 	);
 }

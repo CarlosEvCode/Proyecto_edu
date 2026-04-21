@@ -138,35 +138,8 @@ export function useStudentsPage({notifySuccess, notifyError}) {
 			try {
 				setIsSavingStudent(true);
 
-				await studentsApi.updateStudent(updatedStudent.id, {
-					nombres: updatedStudent.nombres,
-					apellidos: updatedStudent.apellidos,
-					dni: updatedStudent.dni,
-					fecha_nacimiento: updatedStudent.fecha_nacimiento || null,
-					sexo: updatedStudent.sexo,
-					discapacidad: updatedStudent.discapacidad || null,
-					grado: updatedStudent.grado,
-					seccion: updatedStudent.seccion,
-				});
-
-				if (updatedStudent.apoderado?.id) {
-					await studentsApi.updateApoderado(updatedStudent.apoderado.id, {
-						nombres: updatedStudent.apoderado.nombres,
-						apellidos: updatedStudent.apoderado.apellidos,
-						dni: updatedStudent.apoderado.dni,
-						fecha_nacimiento: updatedStudent.apoderado.fecha_nacimiento,
-						celular: updatedStudent.apoderado.celular,
-					});
-				}
-
-				if (updatedStudent.direccion?.id) {
-					await studentsApi.updateDireccion(updatedStudent.direccion.id, {
-						departamento: updatedStudent.direccion.departamento,
-						provincia: updatedStudent.direccion.provincia,
-						distrito: updatedStudent.direccion.distrito,
-						domicilio: updatedStudent.direccion.domicilio,
-					});
-				}
+				// La nueva función updateStudent ya maneja apoderado y dirección de forma coordinada
+				await studentsApi.updateStudent(updatedStudent.id, updatedStudent);
 
 				cache.invalidate('students');
 				await loadStudents(pagination.page, pagination.limit);
