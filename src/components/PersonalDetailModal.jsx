@@ -392,10 +392,10 @@ export function PersonalDetailModal({
 				<div className="modal-footer">
 					{!isEditMode ? (
 						<>
-							<button className="edit-toggle-btn" onClick={() => setIsEditMode(true)}>
+							{onEdit && <button className="edit-toggle-btn" onClick={() => setIsEditMode(true)}>
 								Editar
-							</button>
-							<button
+							</button>}
+							{onDelete && <button
 								className="delete-btn"
 								onClick={() => {
 									if (confirm('¿Estás seguro de eliminar este personal?')) {
@@ -404,7 +404,7 @@ export function PersonalDetailModal({
 								}}
 							>
 								Eliminar
-							</button>
+							</button>}
 						</>
 					) : (
 						<>

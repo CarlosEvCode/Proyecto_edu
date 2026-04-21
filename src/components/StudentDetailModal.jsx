@@ -169,8 +169,8 @@ export function StudentDetailModal({
 				<div className="modal-footer" style={{padding: '20px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
 					{!isEditMode ? (
 						<>
-							<button className="edit-toggle-btn" onClick={() => setIsEditMode(true)}>Editar Todo</button>
-							<button className="delete-btn" onClick={() => confirm('¿Eliminar?') && onDelete(student.id)}>Eliminar</button>
+							{onEdit && <button className="edit-toggle-btn" onClick={() => setIsEditMode(true)}>Editar Todo</button>}
+							{onDelete && <button className="delete-btn" onClick={() => confirm('¿Eliminar?') && onDelete(student.id)}>Eliminar</button>}
 							<button className="cancel-btn" onClick={onClose}>Cerrar</button>
 						</>
 					) : (

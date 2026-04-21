@@ -1,7 +1,7 @@
-const VALID_ROLES = ['admin', 'direccion', 'secretaria', 'docente', 'consulta'];
+const VALID_ROLES = ['admin', 'direccion', 'secretaria', 'docente', 'consulta', 'visualizador'];
 
 export const ROUTE_ACCESS = {
-	estudiantes: ['admin', 'direccion', 'secretaria', 'docente', 'consulta'],
+	estudiantes: ['admin', 'direccion', 'secretaria', 'docente', 'consulta', 'visualizador'],
 	personal: ['admin', 'direccion', 'secretaria'],
 };
 
@@ -20,6 +20,11 @@ export function hasRouteAccess(role, routeKey) {
 	const normalizedRole = normalizeRole(role);
 	const allowedRoles = ROUTE_ACCESS[routeKey] || [];
 	return allowedRoles.includes(normalizedRole);
+}
+
+export function canEdit(role) {
+	const normalizedRole = normalizeRole(role);
+	return ['admin', 'direccion', 'secretaria'].includes(normalizedRole);
 }
 
 export function getDefaultRoute(role) {

@@ -12,6 +12,7 @@ import {useNotification} from '../hooks/useNotification';
 import {usePageShell} from '../hooks/usePageShell';
 import {useStudentsPage} from '../hooks/useStudentsPage';
 import {useSessionGuard} from '../hooks/useSessionGuard';
+import {normalizeRole} from '../utils/permissions';
 
 export function EstudiantesPage() {
 	const navigate = useNavigate();
@@ -43,6 +44,8 @@ export function EstudiantesPage() {
 
 	useSessionGuard({logout, navigate});
 
+	const userRole = normalizeRole(user?.role);
+	const canEdit = ['admin', 'direccion', 'secretaria'].includes(userRole);
 	const mainStat = stats?.totalStudents ?? pagination.total ?? 0;
 	const sexStats = [
 		{label: 'Masculino', value: stats?.bySex?.M || 0},
@@ -178,13 +181,15 @@ export function EstudiantesPage() {
 				</div>
 
 				{/* Botón flotante para agregar estudiante */}
-				<button
-					onClick={() => setIsAddModalOpen(true)}
-					className="fab-btn"
-					title="Agregar nuevo estudiante"
-				>
-					<span className="material-icons">person_add</span>
-				</button>
+				{canEdit && (
+					<button
+						onClick={() => setIsAddModalOpen(true)}
+						className="fab-btn"
+						title="Agregar nuevo estudiante"
+					>
+						<span className="material-icons">person_add</span>
+					</button>
+				)}
 			</main>
 
 			{/* Modals */}
@@ -192,14 +197,14 @@ export function EstudiantesPage() {
 				student={selectedStudent}
 				isOpen={isDetailModalOpen}
 				onClose={() => setIsDetailModalOpen(false)}
-				onEdit={handleSaveStudent}
-				onDelete={handleDeleteStudent}
+				onEdit={canEdit ? handleSaveStudent : null}
+				onDelete={canEdit ? handleDeleteStudent : null}
 				grados={grados}
 				secciones={secciones}
 			/>
 
 			<AddStudentModal
-				isOpen={isAddModalOpen}
+				isOpen={canEdit && isAddModalOpen}
 				onClose={() => setIsAddModalOpen(false)}
 				onSave={handleAddStudent}
 				grados={grados}

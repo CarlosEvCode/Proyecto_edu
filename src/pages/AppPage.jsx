@@ -12,6 +12,7 @@ import {useNotification} from '../hooks/useNotification';
 import {usePageShell} from '../hooks/usePageShell';
 import {usePersonalPage} from '../hooks/usePersonalPage';
 import {useSessionGuard} from '../hooks/useSessionGuard';
+import {normalizeRole} from '../utils/permissions';
 
 export function PersonalPage() {
 	const navigate = useNavigate();
@@ -45,6 +46,9 @@ export function PersonalPage() {
 	const pageShell = usePageShell({user, logout, navigate});
 
 	useSessionGuard({logout, navigate});
+
+	const userRole = normalizeRole(user?.role);
+	const canEdit = ['admin', 'direccion', 'secretaria'].includes(userRole);
 
 	return (
 		<div style={{minHeight: '100vh', background: '#fafafa'}}>
@@ -133,21 +137,23 @@ export function PersonalPage() {
 					)}
 				</div>
 				{/* Botón flotante para agregar personal */}
-				<button
-					onClick={() => setIsAddModalOpen(true)}
-					className="fab-btn"
-					title="Agregar nuevo personal"
-				>
-					<span className="material-icons">person_add</span>
-				</button>
+				{canEdit && (
+					<button
+						onClick={() => setIsAddModalOpen(true)}
+						className="fab-btn"
+						title="Agregar nuevo personal"
+					>
+						<span className="material-icons">person_add</span>
+					</button>
+				)}
 			</main>
 			{/* Modals */}
 			<PersonalDetailModal
 				personal={selectedPersonal}
 				isOpen={isDetailModalOpen}
 				onClose={() => setIsDetailModalOpen(false)}
-				onEdit={handleSavePersonal}
-				onDelete={handleDeletePersonal}
+				onEdit={canEdit ? handleSavePersonal : null}
+				onDelete={canEdit ? handleDeletePersonal : null}
 				cargos={cargos}
 				especialidades={especialidades}
 				niveles={nivelEducativo}
@@ -155,7 +161,7 @@ export function PersonalPage() {
 				condiciones={condiciones}
 			/>
 			<AddPersonalModal
-				isOpen={isAddModalOpen}
+				isOpen={canEdit && isAddModalOpen}
 				onClose={() => setIsAddModalOpen(false)}
 				onSave={handleAddPersonal}
 				cargos={cargos}
