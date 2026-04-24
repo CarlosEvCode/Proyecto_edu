@@ -29,7 +29,7 @@ export default function App() {
 					path="/estudiantes"
 					element={
 						<ProtectedRoute
-							allowedRoles={['admin', 'direccion', 'secretaria', 'docente', 'consulta']}
+							allowedRoles={['admin', 'direccion', 'secretaria', 'docente', 'consulta', 'visualizador']}
 						>
 							<StudentProvider>
 								<EstudiantesPage />
